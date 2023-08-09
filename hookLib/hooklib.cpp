@@ -46,16 +46,20 @@ void postComposition_hooked() {
 // 同时用extern "C"保证以c风格编译(c风格编译，symbols是函数名本身)
 extern "C" {
     __attribute__((visibility ("default"))) void hook_surfaceflinger() {
-    
+        LOGD("Start to hook");
+        
         // 获取hook目标symbol
         std::string symbol;
-        auto target_symbol = read_symbol();
+        /* auto target_symbol = read_symbol();
         if(target_symbol.has_value()) {
             symbol = target_symbol.value();
             LOGD("Try to hook symbol %s", symbol.c_str());
         } else {
+            LOGE("Symbol not found");
             return;
-        }
+        } */
+        // debug
+        symbol = "_ZN7android14SurfaceFlinger15postCompositionEv";
         
         void *sym = DobbySymbolResolver(nullptr, symbol.c_str());
         if(nullptr != sym) {
