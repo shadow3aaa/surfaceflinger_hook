@@ -12,10 +12,13 @@ CFLAGS="
 -Wl,-O3,--lto-O3,--gc-sections,--as-needed,--icf=all,-z,norelro,--pack-dyn-relocs=android+relr
 "
 
+# inject
 aarch64-linux-android-clang++ $CFLAGS ../inject/inject.cpp -w -o inject
-aarch64-linux-android-clang++ --shared ../hookLib/hooklib.cpp ../dobby/arm64-v8a/libdobby.a $CFLAGS -std=c++2b -lc++ -fPIC -llog -static-libstdc++ -o hookLib.so
-
 aarch64-linux-android-strip inject
+
+# libsufaceflinger_hook.so
+cargo b -r --target=aarch64-linux-android
+cp -f ../target/aarch64-linux-android/release/libsufaceflinger_hook.so .
 
 cp -rf ../module/* .
 zip -9 -rq ../surfaceflinger_hook.zip .
