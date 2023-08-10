@@ -13,7 +13,7 @@ CFLAGS="
 "
 
 # inject
-aarch64-linux-android-clang++ $CFLAGS ../inject/inject.cpp -w -o inject
+aarch64-linux-android-clang++ $CFLAGS ../inject/inject.cpp -o inject
 aarch64-linux-android-strip inject
 
 # libsufaceflinger_hook.so

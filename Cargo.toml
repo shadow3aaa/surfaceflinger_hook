@@ -10,3 +10,6 @@ crate-type = ["cdylib"]
 android_logger = "0.13.3"
 dobby-sys = { git = "https://github.com/lanylow/dobby-sys.git" }
 log = "0.4.19"
+
+[build-dependencies]
+cc = "1.0.82"

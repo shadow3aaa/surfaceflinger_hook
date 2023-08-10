@@ -393,7 +393,7 @@ void *get_remote_func_addr(pid_t pid, const char *ModuleName, void *LocalFuncAdd
     // local_addr - local_handle的值为指定函数(如mmap)在该模块中的偏移量，然后再加上remote_handle，结果就为指定函数在目标进程的虚拟地址
     RemoteFuncAddr = (void *)((uintptr_t)LocalFuncAddr - (uintptr_t)LocalModuleAddr + (uintptr_t)RemoteModuleAddr);
 
-    printf("[+] [get_remote_func_addr] lmod=0x%lX, rmod=0x%lX, lfunc=0x%lX, rfunc=0x%lX\n", LocalModuleAddr, RemoteModuleAddr, LocalFuncAddr, RemoteFuncAddr);
+    printf("[+] [get_remote_func_addr] lmod=0x%p, rmod=0x%p, lfunc=0x%p, rfunc=0x%p\n", LocalModuleAddr, RemoteModuleAddr, LocalFuncAddr, RemoteFuncAddr);
     return RemoteFuncAddr;
 }
 

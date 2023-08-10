@@ -115,8 +115,8 @@ int ptrace_getregs(pid_t pid, struct pt_regs *regs){
 
     ioVec.iov_base = regs;
     ioVec.iov_len = sizeof(*regs);
-    if (ptrace(PTRACE_GETREGSET, pid, (void *)regset, &ioVec) < 0){
-        printf("[-] ptrace_getregs: Can not get register values, io %llx, %d\n", ioVec.iov_base,ioVec.iov_len);
+    if (ptrace(PTRACE_GETREGSET, pid, regset, &ioVec) < 0){
+        printf("[-] ptrace_getregs: Can not get register values, io %p, %lu\n", ioVec.iov_base, ioVec.iov_len);
         return -1;
     }
 
@@ -144,7 +144,7 @@ int ptrace_setregs(pid_t pid, struct pt_regs *regs){
 
     ioVec.iov_base = regs;
     ioVec.iov_len = sizeof(*regs);
-    if (ptrace(PTRACE_SETREGSET, pid, (void *)regset, &ioVec) < 0){
+    if (ptrace(PTRACE_SETREGSET, pid, regset, &ioVec) < 0){
         perror("[-] ptrace_setregs: Can not get register values");
         return -1;
     }
