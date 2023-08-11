@@ -1,6 +1,6 @@
 MODDIR=${0%/*}
 TMP_DIR=/data/surfaceflinger_hook
-SO=$TMP_DIR/cache/libsufaceflinger_hook.so
+SO=$TMP_DIR/libsufaceflinger_hook.so
 
 # wait for surfaceflinger start
 until pidof surfaceflinger; do
@@ -21,19 +21,18 @@ set_available_symbol() {
 	local symbol=$(awk '{print $NF}' <<<"$symbol")
 
 	# surfaceflinger reads this file to know which function to hook
-	echo $symbol >$TMP_DIR/cache/available_symbol
+	echo $symbol >$TMP_DIR/available_symbol
 }
 
-set_caches() {
+set_dir() {
 	mkdir -p $TMP_DIR
-	mkdir $TMP_DIR/cache
 	cp -f $MODDIR/libsufaceflinger_hook.so $SO
 }
 
 set_permissions() {
     magiskpolicy --live "allow surfaceflinger * * *"
     chown -R system:graphics $TMP_DIR
-	chmod -R 0666 $TMP_DIR
+	chmod -R 0777 $TMP_DIR
 }
 
 inject() {
@@ -45,7 +44,7 @@ inject() {
 	$MODDIR/inject -p $pid -so $SO -symbols hook_surfaceflinger
 }
 
-set_caches
-find_available_symbol
+set_dir
+set_available_symbol
 set_permissions
 inject
