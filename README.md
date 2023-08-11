@@ -2,4 +2,4 @@
 
 # Surfaceflinger Hook
 
-* 通过plthook注入inline hook android surfaceflinger以获取frametime数据
+* 通过ptrace注入so，并且inline hook surfaceflinger以获取frametime数据

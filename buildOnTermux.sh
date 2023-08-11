@@ -22,7 +22,7 @@ cp -f ../target/aarch64-linux-android/release/libsufaceflinger_hook.so .
 
 # package
 cp -rf ../module/* .
-rm ../surfaceflinger_hook.zip
+rm -f ../surfaceflinger_hook.zip
 zip -9 -rq ../surfaceflinger_hook.zip .
 
 echo "Packaged as magisk module: $(realpath ../surfaceflinger_hook.zip)"

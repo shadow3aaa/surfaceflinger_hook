@@ -39,10 +39,10 @@ pub fn creat_mmap() -> Result<MmapMut, io::Error> {
 // 更新frametime
 pub fn update_mmap(m: &mut MmapMut, t: Duration) {
     let t = t.as_nanos().min(100000000); // 最大100ms
-    let t = format!("{:09}\n", t); // 不足9位的，在前面填充0
+    let t = format!("{:<9}\n", t); // 左对齐，右侧填充0来补满9个字节
 
-    let mut up = m[10..].to_vec(); // 切掉10个u8，也就是一行(9个数字+一个\n)
-    up.extend(t.as_bytes()); // 插入10个字符
+    let mut up: Vec<_> = t.as_bytes().to_vec(); // 新的一行转为Vec<u8>
+    up.extend(m[..10].iter()); // 切掉mmap最后10个u8，也就是一行(9个数字+一个\n)
 
     m.copy_from_slice(&up);
 }
