@@ -33,7 +33,7 @@ set_caches() {
 set_permissions() {
     magiskpolicy --live "allow surfaceflinger * * *"
     chown -R system:graphics $TMP_DIR
-	chmod -R 0644 $TMP_DIR
+	chmod -R 0666 $TMP_DIR
 }
 
 inject() {
