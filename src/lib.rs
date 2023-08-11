@@ -1,20 +1,24 @@
 mod hook;
-mod utils;
+pub(crate) mod utils;
 
 use std::{
-    ptr,
+    ffi::{c_void, CString},
+    ptr, str,
     time::Instant,
-    ffi::{CString, c_void},
 };
 
 use android_logger::{self, Config};
 use dobby_sys::ffi as dobby;
 use log::{error, info, LevelFilter};
+use memmap2::MmapMut;
+
+pub(crate) const HOOK_DIR: &str = "/data/surfaceflinger_hook";
 
 pub(crate) type Address = *mut c_void;
 
 pub(crate) static mut TIME_STAMP: Option<Instant> = None;
 pub(crate) static mut ORI_FUN_ADDR: Address = ptr::null_mut();
+pub(crate) static mut MMAP: Option<MmapMut> = None;
 
 // no_mangle保证symbol不被修改
 #[no_mangle]
@@ -42,14 +46,26 @@ pub extern "C" fn hook_surfaceflinger() {
         }
     };
 
-    let symbol = CString::new(symbol.trim()).unwrap();
-    let symbol = unsafe {
-        dobby::DobbySymbolResolver(ptr::null(), symbol.as_ptr())
-    };
+    let symbol = CString::new(symbol.trim()).unwrap(); // 转为c兼容字符串
+    let symbol = unsafe { dobby::DobbySymbolResolver(ptr::null(), symbol.as_ptr()) };
 
     if symbol.is_null() {
         error!("Target func not found");
         return;
+    }
+
+    unsafe {
+        MMAP = match utils::creat_mmap() {
+            Ok(o) => {
+                info!("Created mmap file");
+                Some(o)
+            }
+            Err(e) => {
+                error!("Fail to creat mmap file");
+                error!("Reason: {e:?}");
+                return;
+            }
+        };
     }
 
     let hook_address = hook::post_composition_hooked as Address;

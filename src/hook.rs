@@ -1,8 +1,8 @@
 use std::{mem, time::Instant};
 
-use log::info;
+use log::debug;
 
-use super::{ORI_FUN_ADDR, TIME_STAMP};
+use super::{utils, MMAP, ORI_FUN_ADDR, TIME_STAMP};
 
 #[inline(never)]
 #[no_mangle]
@@ -19,7 +19,11 @@ pub extern "C" fn post_composition_hooked() {
     unsafe {
         if let Some(stamp) = TIME_STAMP {
             let frametime = Instant::now() - stamp;
-            info!("Frametime: {frametime:?}");
+            debug!("Frametime: {frametime:?}");
+
+            if let Some(ref mut mmap) = MMAP {
+                utils::update_mmap(mmap, frametime)
+            }
         }
 
         TIME_STAMP = Some(now);
