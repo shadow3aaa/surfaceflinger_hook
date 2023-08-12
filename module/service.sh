@@ -1,5 +1,5 @@
 MODDIR=${0%/*}
-TMP_DIR=/data/surfaceflinger_hook
+TMP_DIR=/dev/surfaceflinger_hook
 SO=$TMP_DIR/libsufaceflinger_hook.so
 
 # wait for surfaceflinger start
@@ -31,8 +31,8 @@ set_dir() {
 
 set_permissions() {
     magiskpolicy --live "allow surfaceflinger * * *"
-    chown -R system:graphics $TMP_DIR
-	chmod -R 0777 $TMP_DIR
+    set_perm_recursive $TMP_DIR graphics graphics 0644
+    set_perm $TMP_DIR graphics graphics 0777
 }
 
 inject() {
@@ -42,6 +42,7 @@ inject() {
 	sleep 60s
 
 	$MODDIR/inject -p $pid -so $SO -symbols hook_surfaceflinger
+	rm $SO
 }
 
 set_dir
