@@ -1,6 +1,6 @@
 MODDIR=${0%/*}
 TMP_DIR=/dev/surfaceflinger_hook
-SO=$TMP_DIR/libsufaceflinger_hook.so
+SO=$TMP_DIR/libsurfaceflinger_hook.so
 
 # wait for surfaceflinger start
 until pidof surfaceflinger; do
@@ -43,7 +43,7 @@ set_available_symbol() {
 
 set_dir() {
 	mkdir -p $TMP_DIR
-	cp -f $MODDIR/libsufaceflinger_hook.so $SO
+	cp -f $MODDIR/libsurfaceflinger_hook.so $SO
 }
 
 set_permissions() {

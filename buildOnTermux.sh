@@ -16,9 +16,9 @@ CFLAGS="
 aarch64-linux-android-clang++ $CFLAGS ../inject/inject.cpp -o inject
 aarch64-linux-android-strip inject
 
-# libsufaceflinger_hook.so
+# libsurfaceflinger_hook.so
 cargo b -r --target aarch64-linux-android
-cp -f ../target/aarch64-linux-android/release/libsufaceflinger_hook.so .
+cp -f ../target/aarch64-linux-android/release/libsurfaceflinger_hook.so .
 
 # package
 cp -rf ../module/* .
