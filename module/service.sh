@@ -39,7 +39,7 @@ set_available_symbol() {
 		awk '{print $NF}')
 
 	# no symbol that can be hooked was found
-	if [[ $symbol_pre == "" || $symbols_post == "" ]]; then
+	if [[ $symbol_pre == "" || $symbol_post == "" ]]; then
 		touch $MODDIR/disable
 		exit 1
 	fi
