@@ -12,9 +12,10 @@ pub extern "C" fn post_composition_hooked() {
     unsafe {
         let ori_fun: fn() = mem::transmute(ORI_FUN_ADDR);
         ori_fun(); // 调用原函数
-
+        
+        let now = Instant::now();
         if let Some(sx) = &SENDER {
-            let _ = sx.0.send(Instant::now());
+            let _ = sx.0.send(now);
         }
     }
 }

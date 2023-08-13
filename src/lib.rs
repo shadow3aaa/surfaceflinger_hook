@@ -5,7 +5,6 @@ pub(crate) mod utils;
 
 use std::{
     ffi::{c_void, CString},
-    marker::Sync,
     ptr, str,
     sync::mpsc::{self, Sender},
     thread,
@@ -23,8 +22,6 @@ pub(crate) const HOOK_DIR: &str = "/dev/surfaceflinger_hook";
 pub(crate) type Address = *mut c_void;
 
 pub(crate) struct StampSender(Sender<Instant>);
-
-unsafe impl Sync for StampSender {} // 实际上这不安全，但是hook不能通过参数传递它，只能通过static变量
 
 pub(crate) static mut ORI_FUN_ADDR: Address = ptr::null_mut();
 pub(crate) static mut SENDER: Option<StampSender> = None;
