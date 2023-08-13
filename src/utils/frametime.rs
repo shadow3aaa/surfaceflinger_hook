@@ -39,23 +39,13 @@ impl FileInterface for FrameTimesMmap {
         })
     }
 
-    fn update(&mut self, b: &VecDeque<Instant>) -> Result<(), io::Error> {
-        let mut data = b.iter().take(HOSTORY_LEN + 1); // 比历史长度多切1个以获取历史长度个间隔
-
-        let Some(mut temp) = data.next() else {
-        return Ok(());
-    }; // 获取首个frametime
-
-        for stamp in data {
-            let frametime = *stamp - *temp;
-            let frametime = frametime.min(Duration::from_millis(100));
-            let frametime = format!("{:<9}\n", frametime.as_nanos()); // 做对齐，填充到9个字符，再加上\n 10个字符刚好不变
+    fn update(&mut self, b: &VecDeque<(Duration, Instant)>) -> Result<(), io::Error> {
+        for (frametime, _) in b.iter().take(HOSTORY_LEN) {
+            let frametime = format!("{:<9}\n", frametime.as_nanos()); // 左对齐，填充到9个字符，再加上\n 10个字符刚好不变
 
             let mut up = self.mmap[10..].to_vec(); // 切掉10个u8，也就是一行(9个数字+一个\n)
             up.extend(frametime.as_bytes()); // 插入10个字符(新frametime)到末尾
             self.mmap.copy_from_slice(&up); // 更新到mmap
-
-            temp = stamp;
         }
 
         Ok(())

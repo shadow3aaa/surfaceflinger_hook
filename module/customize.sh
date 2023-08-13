@@ -3,17 +3,24 @@ SKIPUNZIP=0
 # permission
 chmod a+x $MODPATH/inject
 
+# only support aarch64
 if [ "$ARCH" != "arm64" ]; then
 	ui_print "Only supports arm64 architecture"
 	abort
 fi
 
-symbol=$(readelf -s /system/lib64/libsurfaceflinger.so |
-	grep -i postComposition |
-	grep -i SurfaceFlinger)
+# scan symbols
+local symbol_pre=$(readelf -s /system/lib64/libsurfaceflinger.so |
+	grep preComposition |
+	grep CompositionEngine |
+	awk '{print $NF}')
+
+local symbol_post=$(readelf -s /system/lib64/libsurfaceflinger.so |
+	grep postComposition |
+	grep SurfaceFlinger |
+	awk '{print $NF}')
 
 # no symbol that can be hooked was found
-if [ "$symbol" = "" ]; then
-	echo "未找到此设备的hook位点"
+if [ "$symbol_pre" = "" || "$symbols_post" = "" ]; then
 	abort
 fi

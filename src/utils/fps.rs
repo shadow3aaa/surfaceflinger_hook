@@ -71,15 +71,14 @@ impl FileInterface for FpsMmap {
         })
     }
 
-    fn update(&mut self, b: &VecDeque<Instant>) -> Result<(), io::Error> {
+    fn update(&mut self, b: &VecDeque<(Duration, Instant)>) -> Result<(), io::Error> {
         if let Err(e) = self.update_time() {
             error!("Error happened: {e:?}");
         }
 
         let frame_count = b
             .iter()
-            .rev()
-            .take_while(|s| s.elapsed() <= self.fps_sample_time)
+            .take_while(|(_, s)| s.elapsed() <= self.fps_sample_time)
             .count();
 
         let avg_fps = frame_count as f64

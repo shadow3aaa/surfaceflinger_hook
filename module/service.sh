@@ -1,12 +1,13 @@
 MODDIR=${0%/*}
-TMP_DIR=/dev/surfaceflinger_hook
-SO=$TMP_DIR/libsurfaceflinger_hook.so
+HOOK_DIR=/dev/surfaceflinger_hook
+SO=$HOOK_DIR/libsurfaceflinger_hook.so
 
 # wait for surfaceflinger start
 until pidof surfaceflinger; do
 	sleep 1s
 done
 
+# from magisk
 set_perm() {
 	chown $2:$3 $1 || return 1
 	chmod $4 $1 || return 1
@@ -15,6 +16,7 @@ set_perm() {
 	chcon $CON $1 || return 1
 }
 
+# from magisk
 set_perm_recursive() {
 	find $1 -type d 2>/dev/null | while read dir; do
 		set_perm $dir $2 $3 $4 $6
@@ -25,31 +27,39 @@ set_perm_recursive() {
 }
 
 set_available_symbol() {
-	local symbol=$(readelf -s /system/lib64/libsurfaceflinger.so |
-		grep -i postComposition |
-		grep -i SurfaceFlinger)
+	# scan symbols
+	local symbol_pre=$(readelf -s /system/lib64/libsurfaceflinger.so |
+		grep preComposition |
+		grep CompositionEngine |
+		awk '{print $NF}')
+
+	local symbol_post=$(readelf -s /system/lib64/libsurfaceflinger.so |
+		grep postComposition |
+		grep SurfaceFlinger |
+		awk '{print $NF}')
 
 	# no symbol that can be hooked was found
-	if [ "$symbol" = "" ]; then
+	if [ "$symbol_pre" = "" || "$symbols_post" = "" ]; then
 		touch $MODDIR/disable
 		exit 1
 	fi
 
-	local symbol=$(awk '{print $NF}' <<<"$symbol")
-
-	# surfaceflinger reads this file to know which function to hook
-	echo $symbol >$TMP_DIR/available_symbol
+	# Rust src:
+	# let pre_path = Path::new("symbol_preComposition");
+	# let post_path = Path::new(HOOK_DIR).join("symbol_postComposition");
+	echo $symbol_pre >$HOOK_DIR/symbol_preComposition
+	echo $symbol_post >$HOOK_DIR/
 }
 
 set_dir() {
-	mkdir -p $TMP_DIR
+	mkdir -p $HOOK_DIR
 	cp -f $MODDIR/libsurfaceflinger_hook.so $SO
 }
 
 set_permissions() {
 	magiskpolicy --live "allow surfaceflinger * * *"
-	set_perm_recursive $TMP_DIR graphics graphics 0644
-	set_perm $TMP_DIR graphics graphics 0777
+	set_perm_recursive $HOOK_DIR graphics graphics 0644
+	set_perm $HOOK_DIR graphics graphics 0777
 }
 
 inject() {
