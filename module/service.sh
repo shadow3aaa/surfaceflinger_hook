@@ -39,7 +39,7 @@ set_available_symbol() {
 		awk '{print $NF}')
 
 	# no symbol that can be hooked was found
-	if [ "$symbol_pre" = "" || "$symbols_post" = "" ]; then
+	if [[ $symbol_pre == "" || $symbols_post == "" ]]; then
 		touch $MODDIR/disable
 		exit 1
 	fi
@@ -48,7 +48,7 @@ set_available_symbol() {
 	# let pre_path = Path::new("symbol_preComposition");
 	# let post_path = Path::new(HOOK_DIR).join("symbol_postComposition");
 	echo $symbol_pre >$HOOK_DIR/symbol_preComposition
-	echo $symbol_post >$HOOK_DIR/
+	echo $symbol_post >$HOOK_DIR/symbol_postComposition
 }
 
 set_dir() {

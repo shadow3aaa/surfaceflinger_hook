@@ -21,6 +21,6 @@ local symbol_post=$(readelf -s /system/lib64/libsurfaceflinger.so |
 	awk '{print $NF}')
 
 # no symbol that can be hooked was found
-if [ "$symbol_pre" = "" || "$symbols_post" = "" ]; then
+if [[ $symbol_pre == "" || $symbols_post == "" ]]; then
 	abort
 fi
