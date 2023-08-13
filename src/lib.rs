@@ -23,8 +23,8 @@ pub(crate) type Address = *mut c_void;
 
 pub(crate) struct StampSender(Sender<Instant>);
 
-pub(crate) static mut ORI_COMPOSITION_ADDR: Address = ptr::null_mut();
-pub(crate) static mut ORI_COMPOSITE_ADDR: Address = ptr::null_mut();
+pub(crate) static mut ORI_POST_COMP_ADDR: Address = ptr::null_mut();
+pub(crate) static mut ORI_PRE_COMP_ADDR: Address = ptr::null_mut();
 pub(crate) static mut SENDER: Option<StampSender> = None;
 
 // no_mangle保证symbol不被修改
@@ -98,19 +98,5 @@ pub extern "C" fn hook_surfaceflinger() {
     let hook_address = hook::post_composition_hooked as Address;
     unsafe {
         dobby::DobbyHook(symbol, hook_address, &mut ORI_COMPOSITION_ADDR);
-    }
-
-    test_hook();
-}
-
-fn test_hook() {
-    let symbol = unsafe {
-        let symbol = CString::new("_ZN7android14SurfaceFlinger9compositeEll").unwrap();
-        dobby::DobbySymbolResolver(ptr::null(), symbol.as_ptr())
-    };
-
-    let hook_address = hook::post_composite_hooked as Address;
-    unsafe {
-        dobby::DobbyHook(symbol, hook_address, &mut ORI_COMPOSITE_ADDR);
     }
 }

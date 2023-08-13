@@ -1,44 +1,45 @@
 use std::{collections::VecDeque, mem, sync::mpsc::Receiver, time::Instant};
 
+use libc::c_void;
 use libc::int64_t;
 use log::{error, info};
 
-use crate::{utils::FileInterface, ORI_COMPOSITE_ADDR, ORI_COMPOSITION_ADDR, SENDER};
+use crate::{utils::FileInterface, ORI_PRE_COMP_ADDR, ORI_POST_COMP_ADDR, SENDER};
+
+static mut PRE_STAMP: Option<Instant> = None;
 
 const BUFFER_SIZE: usize = 1024;
 
-// void SurfaceFlinger::postComposition()
-// or
-// void SurfaceFlinger::postFrame()
+// void preComposition(CompositionRefreshArgs&)
 #[inline(never)]
 #[no_mangle]
-pub extern "C" fn post_composition_hooked() {
+pub extern "C" fn pre_composition_hooked(args: c_void) {
     unsafe {
-        let ori_fun: fn() = mem::transmute(ORI_COMPOSITION_ADDR);
-        ori_fun(); // 调用原函数
+        let ori_fun: extern "C" fn(c_void) = mem::transmute(ORI_PRE_COMP_ADDR);
+        ori_fun(args);
 
-        let now = Instant::now();
-        if let Some(sx) = &SENDER {
-            let _ = sx.0.send(now);
+        unsafe {
+            PRE_STAMP = Some(Instant::now());
         }
     }
 }
 
-static mut temp_lock: Option<i64> = None;
-// void SurfaceFlinger::composite(nsecs_t frameTime, int64_t vsyncId)
+// void SurfaceFlinger::postComposition()
 #[inline(never)]
 #[no_mangle]
-pub extern "C" fn post_composite_hooked(frametime: i64, vsync_id: i64) {
+pub extern "C" fn post_composition_hooked() {
     unsafe {
-        let ori_fun: extern "C" fn(i64, i64) = mem::transmute(ORI_COMPOSITE_ADDR);
-        ori_fun(frametime, vsync_id);
+        let ori_fun: fn() = mem::transmute(ORI_POST_COMP_ADDR);
+        ori_fun(); // 调用原函数
 
-        unsafe {
-            if let Some(ref mut stamp) = temp_lock {
-                info!("{:?}", vsync_id - *stamp);
-                *stamp = vsync_id;
-            } else {
-                temp_lock = Some(vsync_id);
+        if let Some(stamp) = PRE_STAMP {
+            let now = Instant::now();
+            let frametime = now - stamp;
+            
+            info!("{frametime:?}");
+            
+            if let Some(sx) = &SENDER {
+                let _ = sx.0.send(now);
             }
         }
     }
