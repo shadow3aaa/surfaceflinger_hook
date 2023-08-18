@@ -68,7 +68,7 @@ inject() {
 	# reserve time for something unexpected
 	sleep 60s
 
-	$MODDIR/inject -p $pid -so $SO -symbols hook_surfaceflinger
+	$MODDIR/inject -p $pid -so $SO -symbols handle_hook
 	rm $SO
 }
 

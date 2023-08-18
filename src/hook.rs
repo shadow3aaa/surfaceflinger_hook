@@ -1,62 +1,58 @@
-use std::{
-    collections::VecDeque,
-    mem,
-    sync::mpsc::Receiver,
-    time::{Duration, Instant},
-};
+use std::{convert::AsRef, fs, ptr};
 
-use libc::c_void;
-use log::{error, info};
+use dobby_api::{hook, resolve_func_addr, Address};
+use goblin::Object;
 
-use crate::{utils::FileInterface, ORI_POST_COMP_ADDR, ORI_PRE_COMP_ADDR, SENDER};
+use crate::error::{Error, Result};
 
-static mut PRE_STAMP: Option<Instant> = None;
+const LIB_PATH: &str = "/system/lib64/libsurfaceflinger.so";
 
-const BUFFER_SIZE: usize = 1024;
-
-// void preComposition(CompositionRefreshArgs&)
-#[inline(never)]
-#[no_mangle]
-pub unsafe extern "C" fn pre_composition_hooked(args: c_void) {
-    let ori_fun: extern "C" fn(c_void) = mem::transmute(ORI_PRE_COMP_ADDR);
-    ori_fun(args);
-
-    PRE_STAMP = Some(Instant::now());
+pub struct SymbolHooker {
+    symbols: Vec<String>,
 }
 
-// void SurfaceFlinger::postComposition()
-#[inline(never)]
-#[no_mangle]
-pub unsafe extern "C" fn post_composition_hooked() {
-    let ori_fun: fn() = mem::transmute(ORI_POST_COMP_ADDR);
-    ori_fun(); // 调用原函数
+impl SymbolHooker {
+    pub fn new() -> Result<Self> {
+        let buffer = fs::read(LIB_PATH)?;
 
-    if let Some(stamp) = PRE_STAMP {
-        let now = Instant::now();
-        let frametime = now - stamp;
+        let Object::Elf(lib) = Object::parse(&buffer)? else {
+            return Err(Error::LibParse)?;
+        };
 
-        info!("{frametime:?}");
-
-        if let Some(sx) = &SENDER {
-            let _ = sx.0.send((frametime, now));
+        if !lib.is_lib {
+            return Err(Error::LibParse)?;
         }
+
+        let symbols = lib
+            .dynstrtab
+            .to_vec()?
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        Ok(Self { symbols })
     }
-}
 
-pub fn hook_thread(rx: &Receiver<(Duration, Instant)>, mut itf: Vec<Box<dyn FileInterface>>) {
-    let mut buffer = VecDeque::with_capacity(BUFFER_SIZE);
-    loop {
-        let stamp = rx.recv().unwrap();
-        buffer.push_front(stamp);
+    pub unsafe fn find_and_hook<I, S>(&self, s: I, replace_func: Address) -> Result<Address>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let s: Vec<_> = s.into_iter().collect();
+        let symbol = self.find_symbol(&s)?;
+        let mut save_temp = ptr::null_mut();
 
-        if buffer.len() >= BUFFER_SIZE {
-            buffer.pop_back();
-        } // 保持buffer大小
+        hook(symbol, replace_func, Some(&mut save_temp))?;
 
-        for i in &mut itf {
-            if let Err(e) = i.update(&buffer) {
-                error!("Error happened: {e:?}");
-            }
-        }
+        Ok(save_temp)
+    }
+
+    fn find_symbol<S: AsRef<str>>(&self, s: &[S]) -> Result<Address> {
+        let symbol = self
+            .symbols
+            .iter()
+            .find(|symbol| s.iter().all(|s| symbol.contains(s.as_ref()))) // 关键字匹配
+            .ok_or(Error::Symbol)?;
+
+        Ok(resolve_func_addr(None, symbol)?)
     }
 }

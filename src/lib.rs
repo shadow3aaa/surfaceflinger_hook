@@ -1,100 +1,82 @@
 #![deny(clippy::all)]
 #![warn(clippy::nursery)]
-mod hook;
-pub(crate) mod utils;
 
-use std::{
-    ffi::c_void,
-    ptr, str,
-    sync::mpsc::{self, Sender},
-    thread,
-    time::{Duration, Instant},
-};
+#[cfg(not(target_os = "android"))]
+#[cfg(not(target_arch = "aarch64"))]
+compile_error!("Only for aarch64 android");
+
+mod error;
+mod hook;
+
+use std::{mem, ptr};
 
 use android_logger::{self, Config};
-use dobby_sys::ffi as dobby;
+use dobby_api::Address;
 use log::{error, info, LevelFilter};
 
-use utils::{fps::FpsMmap, frametime::FrameTimesMmap, FileInterface};
+use error::Result;
+use hook::SymbolHooker;
 
-pub(crate) const HOOK_DIR: &str = "/dev/surfaceflinger_hook";
+static mut VSYNC_FUNC_PTR: Address = ptr::null_mut();
+static mut COMP_FUNC_PTR: Address = ptr::null_mut();
+static mut GET_FPS_FUNC_PTR: Address = ptr::null_mut();
 
-pub(crate) type Address = *mut c_void;
+static mut COMPOSE_COUNT: usize = 0;
+static mut VSYNC_COUNT: usize = 0;
+static mut FPS: f32 = 0.0;
+static mut PERIOD: i64 = 0;
 
-pub(crate) struct StampSender(Sender<(Duration, Instant)>); // Just make it sendable
-
-pub(crate) static mut ORI_POST_COMP_ADDR: Address = ptr::null_mut();
-pub(crate) static mut ORI_PRE_COMP_ADDR: Address = ptr::null_mut();
-pub(crate) static mut SENDER: Option<StampSender> = None;
-
-// no_mangle保证symbol不被修改
 #[no_mangle]
-pub extern "C" fn hook_surfaceflinger() {
+pub extern "C" fn handle_hook() {
     android_logger::init_once(
         Config::default()
             .with_max_level(LevelFilter::Trace)
             .with_tag("SURFACEFLINGER HOOK"),
     );
 
-    info!("Start to hook");
-    let (prev_symbol, post_symbol) = match unsafe { utils::target_symbol() } {
-        Ok(s) => {
-            if s.0.is_null() || s.1.is_null() {
-                error!("Target symbol not found");
-                return;
-            }
-            info!("Try hook symbol {:?} and {:?}", s.0, s.1);
-            s
-        }
-        Err(e) => {
-            error!("Can not read target symbol file");
-            error!("Reason: {e:?}");
-            return;
-        }
-    };
-
-    let frametimes_node = match FrameTimesMmap::init() {
-        Ok(o) => o.boxed(),
-        Err(e) => {
-            error!("Failed to init frametime node");
-            error!("Reason: {e:?}");
-            return;
-        }
-    };
-
-    let fps_node = match FpsMmap::init() {
-        Ok(o) => o.boxed(),
-        Err(e) => {
-            error!("Failed to init fps node");
-            error!("Reason: {e:?}");
-            return;
-        }
-    };
-
-    let itfs: Vec<Box<dyn FileInterface>> = vec![frametimes_node, fps_node];
-
-    let (sx, rx) = mpsc::channel();
     unsafe {
-        SENDER = Some(StampSender(sx));
+        hook_main().unwrap_or_else(|e| error!("{e:#?}"));
     }
+}
 
-    if let Err(e) = thread::Builder::new()
-        .name("HookThread".into())
-        .spawn(move || hook::hook_thread(&rx, itfs))
-    {
-        error!("Fail to creat hook thread");
-        error!("Reason: {e:?}");
-        return;
-    }
+unsafe fn hook_main() -> Result<()> {
+    let hooker = SymbolHooker::new()?;
+    info!("Hooker started");
 
-    // hook prev
-    let hook_address = hook::pre_composition_hooked as Address;
-    unsafe {
-        dobby::DobbyHook(prev_symbol, hook_address, &mut ORI_PRE_COMP_ADDR);
-    }
+    let address = post_hook_vsync as Address;
+    VSYNC_FUNC_PTR = hooker.find_and_hook(["DispSync", "onVsyncCallback"], address)?;
 
-    let hook_address = hook::post_composition_hooked as Address;
-    unsafe {
-        dobby::DobbyHook(post_symbol, hook_address, &mut ORI_POST_COMP_ADDR);
+    info!("Hooked onVsyncCallback func");
+
+    let address = post_hook_comp as Address;
+    COMP_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
+
+    info!("Hooked postComposition func");
+
+    Ok(())
+}
+
+// void onVsyncCallback(nsecs_t vsyncTime, nsecs_t targetWakeupTime, nsecs_t readyTime);
+#[no_mangle]
+unsafe extern "C" fn post_hook_vsync(a: i64, b: i64, c: i64) {
+    let ori_func: extern "C" fn(i64, i64, i64) = mem::transmute(VSYNC_FUNC_PTR);
+    ori_func(a, b, c);
+
+    VSYNC_COUNT += 1;
+
+    if VSYNC_COUNT > 1 {
+        info!("{COMPOSE_COUNT}");
+
+        COMPOSE_COUNT = 0;
+        VSYNC_COUNT = 0;
     }
+}
+
+// void postComposition()
+#[no_mangle]
+unsafe extern "C" fn post_hook_comp() {
+    let ori_func: extern "C" fn() = mem::transmute(COMP_FUNC_PTR);
+    ori_func();
+
+    COMPOSE_COUNT += 1;
 }
