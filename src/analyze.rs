@@ -59,13 +59,9 @@ pub fn jank(rx: &Receiver<Message>) {
 
         if target_fps_buffer.len() > TARGET_FPS_BUFFER_SIZE {
             info!("debug: {target_fps_buffer:#?}");
-            target_fps = target_fps_buffer.iter().fold(0.0, |max: f64, cur| {
-                if *cur <= display_fps {
-                    max.max(*cur)
-                } else {
-                    max
-                }
-            });
+            target_fps = target_fps_buffer
+                .iter()
+                .fold(0.0, |max: f64, _cur| max.max(display_fps));
             target_fps_buffer.clear();
             info!("TARGET FPS: {target_fps:.2}");
         }
@@ -73,6 +69,7 @@ pub fn jank(rx: &Receiver<Message>) {
         // debug
         info!("SCREEN REFRESH RATE: {display_fps:.2}");
         info!("SOFTWARE FPS: {composition_fps:.2}");
+        info!("DATA TAKE: {data_take}");
     }
 }
 
@@ -107,10 +104,8 @@ fn analyze_soft(b: &VecDeque<Instant>, t: usize) -> Option<f64> {
         |(last, mut total, mut count), cur| {
             if let Some(last) = last {
                 let dur = *last - *cur;
-                if dur > Duration::from_millis(1) {
-                    total += dur;
-                    count += 1;
-                }
+                total += dur;
+                count += 1;
             }
             (Some(cur), total, count)
         },
