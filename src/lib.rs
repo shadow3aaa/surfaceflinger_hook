@@ -5,26 +5,29 @@
 #[cfg(not(target_arch = "aarch64"))]
 compile_error!("Only for aarch64 android");
 
+mod analyze;
 mod error;
 mod hook;
 
-use std::{mem, ptr};
+use std::{
+    mem, ptr,
+    sync::mpsc::{self, Sender},
+    thread,
+};
 
 use android_logger::{self, Config};
 use dobby_api::Address;
 use log::{error, info, LevelFilter};
 
+use analyze::Message;
 use error::Result;
 use hook::SymbolHooker;
 
 static mut VSYNC_FUNC_PTR: Address = ptr::null_mut();
-static mut COMP_FUNC_PTR: Address = ptr::null_mut();
-static mut GET_FPS_FUNC_PTR: Address = ptr::null_mut();
+static mut COMM_FUNC_PTR: Address = ptr::null_mut();
 
-static mut COMPOSE_COUNT: usize = 0;
-static mut VSYNC_COUNT: usize = 0;
-static mut FPS: f32 = 0.0;
-static mut PERIOD: i64 = 0;
+static mut VSYNC_SENDER: Option<Sender<Message>> = None;
+static mut COMM_SENDER: Option<Sender<Message>> = None;
 
 #[no_mangle]
 pub extern "C" fn handle_hook() {
@@ -48,10 +51,18 @@ unsafe fn hook_main() -> Result<()> {
 
     info!("Hooked onVsyncCallback func");
 
-    let address = post_hook_comp as Address;
-    COMP_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
+    let address = post_hook_commit as Address;
+    COMM_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "commit"], address)?;
 
-    info!("Hooked postComposition func");
+    info!("Hooked commit func");
+
+    let (sx, rx) = mpsc::channel();
+    COMM_SENDER = Some(sx.clone());
+    COMM_SENDER = Some(sx);
+
+    thread::Builder::new()
+        .name("HookThread".into())
+        .spawn(move || analyze::jank(&rx))?;
 
     Ok(())
 }
@@ -62,21 +73,22 @@ unsafe extern "C" fn post_hook_vsync(a: i64, b: i64, c: i64) {
     let ori_func: extern "C" fn(i64, i64, i64) = mem::transmute(VSYNC_FUNC_PTR);
     ori_func(a, b, c);
 
-    VSYNC_COUNT += 1;
-
-    if VSYNC_COUNT > 1 {
-        info!("{COMPOSE_COUNT}");
-
-        COMPOSE_COUNT = 0;
-        VSYNC_COUNT = 0;
+    if let Some(sx) = &VSYNC_SENDER {
+        sx.send(Message::Vsync).unwrap_or_else(|e| error!("{e:?}"));
     }
 }
 
-// void postComposition()
+// bool SurfaceFlinger::commit(nsecs_t frameTime, int64_t vsyncId, nsecs_t expectedVsyncTime)
 #[no_mangle]
-unsafe extern "C" fn post_hook_comp() {
-    let ori_func: extern "C" fn() = mem::transmute(COMP_FUNC_PTR);
-    ori_func();
+unsafe extern "C" fn post_hook_commit(a: i64, b: i64, c: i64) -> bool {
+    let ori_func: extern "C" fn(i64, i64, i64) -> bool = mem::transmute(COMM_FUNC_PTR);
+    let result = ori_func(a, b, c);
 
-    COMPOSE_COUNT += 1;
+    if let Some(sx) = &COMM_SENDER {
+        if result {
+            sx.send(Message::Soft).unwrap_or_else(|e| error!("{e:?}"));
+        }
+    }
+
+    result
 }

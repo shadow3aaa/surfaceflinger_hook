@@ -12,6 +12,7 @@ goblin = { version = "0.7.1", features = ["elf64", "alloc"] }
 log = "0.4.20"
 android_logger = "0.13.3"
 thiserror = "1.0.47"
+lazy_static = "1.4.0"
 
 [profile.release]
 codegen-units = 1
