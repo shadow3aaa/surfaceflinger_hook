@@ -21,28 +21,24 @@ impl Connection {
     // 初始化和root程序的连接，堵塞，放在HookThread处理
     pub fn init_and_wait() -> Result<Self> {
         // 初始化compose count管道
-        let path = Path::new(API_DIR).join("count");
+        let count_path = Path::new(API_DIR).join("count");
+        let count_on_path = Path::new(API_DIR).join("count_on");
+        let _ = fs::remove_file(&count_path);
+        let _ = fs::remove_file(&count_on_path);
 
-        let _ = fs::remove_file(&path); // 删掉之前的管道
-        named_pipe::create(&path, Some(0o644))?;
+        named_pipe::create(&count_path, Some(0o644))?;
+        named_pipe::create(&count_on_path, Some(0o644))?;
 
-        let mut pipe = File::open(&path)?;
-
-        let mut temp = String::new();
-        let _ = pipe.read_to_string(&mut temp); // 等待root程序调用api写入一次任意内容来确认连接
-
+        let pipe = File::open(&count_path)?;
         let (sx, rx) = mpsc::channel();
         thread::Builder::new()
             .name("HookConnection".into())
             .spawn(move || Self::connection_thread(pipe, &rx))?;
 
-        let count_on_path = Path::new(API_DIR).join("count_on");
-
-        named_pipe::create(&count_on_path, Some(0o644))?; // vsync结算count和compose结算有各自的好处，这里给出接口供api控制何时结算
         let mut pipe = File::open(&count_on_path)?;
 
         let mut temp = String::new();
-        pipe.read_to_string(&mut temp)?;
+        pipe.read_to_string(&mut temp)?; // 等待root程序通过api初始化count_on
 
         let count_on = match temp.split('#').last().map(|s| s.trim()) {
             Some("vsync") => Message::Vsync,
