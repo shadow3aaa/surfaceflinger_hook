@@ -26,31 +26,6 @@ set_perm_recursive() {
 	done
 }
 
-set_available_symbol() {
-	# scan symbols
-	local symbol_pre=$(readelf -s /system/lib64/libsurfaceflinger.so |
-		grep preComposition |
-		grep CompositionEngine |
-		awk '{print $NF}')
-
-	local symbol_post=$(readelf -s /system/lib64/libsurfaceflinger.so |
-		grep postComposition |
-		grep SurfaceFlinger |
-		awk '{print $NF}')
-
-	# no symbol that can be hooked was found
-	if [[ $symbol_pre == "" || $symbol_post == "" ]]; then
-		touch $MODDIR/disable
-		exit 1
-	fi
-
-	# Rust src:
-	# let pre_path = Path::new("symbol_preComposition");
-	# let post_path = Path::new(HOOK_DIR).join("symbol_postComposition");
-	echo $symbol_pre >$HOOK_DIR/symbol_preComposition
-	echo $symbol_post >$HOOK_DIR/symbol_postComposition
-}
-
 set_dir() {
 	mkdir -p $HOOK_DIR
 	cp -f $MODDIR/libsurfaceflinger_hook.so $SO
@@ -58,8 +33,7 @@ set_dir() {
 
 set_permissions() {
 	magiskpolicy --live "allow surfaceflinger * * *"
-	set_perm_recursive $HOOK_DIR graphics graphics 0644
-	set_perm $HOOK_DIR graphics graphics 0777
+	set_perm_recursive $HOOK_DIR graphics system 0777 0644
 }
 
 inject() {
@@ -69,10 +43,8 @@ inject() {
 	sleep 60s
 
 	$MODDIR/inject -p $pid -so $SO -symbols handle_hook
-	rm $SO
 }
 
 set_dir
-set_available_symbol
 set_permissions
 inject
