@@ -22,7 +22,7 @@ hook_lib:
 	@echo "Built surfaceflinger_hook(lib) successfully"
 	
 .PHONY: package
-package:
+package: inject hook_lib
 	@rm -rf output/*
 	@mkdir -p $BASEDIR/output
 
