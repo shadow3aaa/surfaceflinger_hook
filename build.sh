@@ -6,13 +6,7 @@ BASEDIR="$(pwd)"
 
 # build inject
 cd $BASEDIR/AndroidPtraceInject
-
-rm -rf build
-mkdir build
-cd build
-
-cmake ../Inject
-make -j4
+cargo b -r --target aarch64-linux-android
 
 # build hook lib
 cd $BASEDIR
@@ -24,8 +18,11 @@ mkdir -p $BASEDIR/output
 cd $BASEDIR/output
 
 cp -rf $BASEDIR/module/* .
-cp -f $BASEDIR/AndroidPtraceInject/Inject/outputs/Inject ./inject
-cp -f target/aarch64-linux-android/release/libsurfaceflinger_hook.so ./libsurfaceflinger_hook.so
+cp -f $BASEDIR/AndroidPtraceInject/target/release/inject .
+cp -f $BASEDIR/target/aarch64-linux-android/release/libsurfaceflinger_hook.so .
+
+strip ./inject
+strip ./libsurfaceflinger_hook.so
 
 rm -f $BASEDIR/surfaceflinger_hook.zip
 zip -9 -rq $BASEDIR/surfaceflinger_hook.zip .
