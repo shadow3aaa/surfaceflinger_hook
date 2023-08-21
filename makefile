@@ -24,7 +24,7 @@ hook_lib:
 .PHONY: package
 package: inject hook_lib
 	@rm -rf output/*
-	@mkdir -p $BASEDIR/output
+	@mkdir -p output
 
 	@cp -rf module/* output/
 	@cp -f AndroidPtraceInject/target/aarch64-linux-android/release/inject output/
