@@ -1,0 +1,3 @@
+[submodule "AndroidPtraceInject"]
+	path = AndroidPtraceInject
+	url = https://github.com/shadow3aaa/AndroidPtraceInject

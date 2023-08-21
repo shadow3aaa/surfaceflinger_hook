@@ -23,6 +23,7 @@ impl Connection {
         // 初始化compose count管道
         let count_path = Path::new(API_DIR).join("count");
         let count_on_path = Path::new(API_DIR).join("count_on");
+
         let _ = fs::remove_file(&count_path);
         let _ = fs::remove_file(&count_on_path);
 
@@ -38,7 +39,7 @@ impl Connection {
         let mut pipe = File::open(&count_on_path)?;
 
         let mut temp = String::new();
-        pipe.read_to_string(&mut temp)?; // 等待root程序通过api初始化count_on
+        pipe.read_to_string(&mut temp)?; // 等待root程序通过api初始化count_on，同时在此处与api确认连接
 
         let count_on = match temp.split('#').last().map(|s| s.trim()) {
             Some("vsync") => Message::Vsync,
@@ -87,7 +88,7 @@ impl Connection {
             let (m, c) = rx.recv().unwrap();
             let _ = match m {
                 Message::Vsync => write!(pipe, "vsync:{c}#"),
-                Message::Soft => write!(pipe, "soft:{c}#"),
+                Message::Soft => write!(pipe, "soft:{c}#"), // 分隔符为'#'
             };
         }
     }
