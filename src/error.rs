@@ -25,6 +25,6 @@ pub enum Error {
         #[from]
         source: io::Error,
     },
-    #[error("An error happened: {0}")]
+    #[error("Got an error: {0}")]
     Other(&'static str),
 }
