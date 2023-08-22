@@ -16,11 +16,11 @@ impl SymbolHooker {
         let buffer = fs::read(LIB_PATH)?;
 
         let Object::Elf(lib) = Object::parse(&buffer)? else {
-            return Err(Error::LibParse)?;
+            return Err(Error::Other("Not an elf lib"));
         };
 
         if !lib.is_lib {
-            return Err(Error::LibParse)?;
+            return Err(Error::Other("Not an elf lib"))?;
         }
 
         let symbols = lib

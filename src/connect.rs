@@ -9,7 +9,10 @@ use std::{
 use log::error;
 use unix_named_pipe as named_pipe;
 
-use crate::{error::Result, Message, API_DIR};
+use crate::{
+    error::{Error, Result},
+    Message, API_DIR,
+};
 
 pub struct Connection {
     sx: Sender<(Message, u32)>,
@@ -27,8 +30,8 @@ impl Connection {
         let _ = fs::remove_file(&count_path);
         let _ = fs::remove_file(&count_on_path);
 
-        named_pipe::create(&count_path, Some(0o644))?;
-        named_pipe::create(&count_on_path, Some(0o644))?;
+        named_pipe::create(&count_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
+        named_pipe::create(&count_on_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
 
         let pipe = File::open(&count_path)?;
         let (sx, rx) = mpsc::channel();
@@ -59,7 +62,9 @@ impl Connection {
     }
 
     pub fn send_count(&self, m: Message, c: u32) -> Result<()> {
-        self.sx.send((m, c))?;
+        self.sx
+            .send((m, c))
+            .map_err(|_| Error::Other("Failed to send count"))?;
         Ok(())
     }
 
