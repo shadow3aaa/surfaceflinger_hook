@@ -8,7 +8,7 @@ pub fn jank(rx: &Receiver<Message>) {
     let connection = Connection::init_and_wait().unwrap(); // 等待root程序链接
 
     loop {
-        let count_on = connection.required_count_on().unwrap();
+        let count_on = connection.required_count_on();
 
         match rx.recv().unwrap() {
             Message::Vsync => {

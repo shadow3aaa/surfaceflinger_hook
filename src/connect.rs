@@ -68,23 +68,25 @@ impl Connection {
         Ok(())
     }
 
-    pub fn required_count_on(&self) -> Result<Message> {
-        let mut pipe = named_pipe::open_read(&self.count_on_path)?; // 这会非堵塞的打开管道
+    pub fn required_count_on(&self) -> Message {
+        let Ok(mut pipe) = named_pipe::open_read(&self.count_on_path) else {
+            return self.count_on;
+        }; // 这会非堵塞的打开管道
 
         let mut r = String::new();
 
         if pipe.read_to_string(&mut r).is_ok() {
             match r.split('#').last().map(|s| s.trim()) {
-                Some("vsync") => Ok(Message::Vsync),
-                Some("soft") => Ok(Message::Soft),
+                Some("vsync") => Message::Vsync,
+                Some("soft") => Message::Soft,
                 _ => {
                     error!("Wrong pipe message");
                     error!("Use last recorded value");
-                    Ok(self.count_on)
+                    self.count_on
                 }
             }
         } else {
-            Ok(self.count_on)
+            self.count_on
         }
     }
 
