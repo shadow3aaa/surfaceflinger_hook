@@ -27,6 +27,7 @@ set_perm_recursive() {
 }
 
 set_dir() {
+    # rm -rf $HOOK_DIR
 	mkdir -p $HOOK_DIR
 	cp -f $MODDIR/libsurfaceflinger_hook.so $SO
 }

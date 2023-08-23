@@ -34,8 +34,9 @@ impl Connection {
         let jank_path = Path::new(API_DIR).join("jank");
         let input_path = Path::new(API_DIR).join("input");
 
-        let _ = fs::remove_file(&jank_path);
-        let _ = fs::remove_file(&input_path);
+        // 目前hook文件夹在/dev(tmpfs)下，重启不保留，删除无意义
+        /* let _ = fs::remove_file(&jank_path);
+        let _ = fs::remove_file(&input_path); */
 
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
         named_pipe::create(&input_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
