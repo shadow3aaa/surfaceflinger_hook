@@ -26,9 +26,6 @@ package: inject hook_lib
 	@rm -rf output/*
 	@mkdir -p output
 
-	@cp -rf module/* output/
+	@cp -rf scripts/* output/
 	@cp -f AndroidPtraceInject/target/aarch64-linux-android/release/inject output/
 	@cp -f target/aarch64-linux-android/release/libsurfaceflinger_hook.so output/
-	
-	@cd output && zip -9 -rq ../surfaceflinger_hook.zip .
-	

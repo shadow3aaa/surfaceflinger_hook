@@ -1,9 +1,3 @@
-# output
-/output
-
-# magisk module
-*.zip
-
-# rust
 /target
 /Cargo.lock
+/output

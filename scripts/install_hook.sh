@@ -1,4 +1,4 @@
-MODDIR=${0%/*}
+BASEDIR=$(realpath $0)
 HOOK_DIR=/dev/surfaceflinger_hook
 SO=$HOOK_DIR/libsurfaceflinger_hook.so
 
@@ -7,7 +7,6 @@ until pidof surfaceflinger; do
 	sleep 1s
 done
 
-# from magisk
 set_perm() {
 	chown $2:$3 $1 || return 1
 	chmod $4 $1 || return 1
@@ -16,7 +15,6 @@ set_perm() {
 	chcon $CON $1 || return 1
 }
 
-# from magisk
 set_perm_recursive() {
 	find $1 -type d 2>/dev/null | while read dir; do
 		set_perm $dir $2 $3 $4 $6
@@ -27,9 +25,8 @@ set_perm_recursive() {
 }
 
 set_dir() {
-    # rm -rf $HOOK_DIR
 	mkdir -p $HOOK_DIR
-	cp -f $MODDIR/libsurfaceflinger_hook.so $SO
+	cp -f $BASEDIR/libsurfaceflinger_hook.so $SO
 }
 
 set_permissions() {
@@ -43,7 +40,7 @@ inject() {
 	# reserve time for something unexpected
 	sleep 60s
 
-	$MODDIR/inject -p $pid -so $SO -symbols handle_hook
+	$BASEDIR/inject -p $pid -so $SO -symbols handle_hook
 }
 
 set_dir
