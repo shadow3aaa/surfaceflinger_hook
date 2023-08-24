@@ -1,7 +1,7 @@
 # Surfaceflinger Hook
 
 * 通过注入来检测jank
-* [api](https://github.com/shadow3aaa/surfacefliger_hook_api)
+* [api](https://github.com/shadow3aaa/surfaceflinger_hook_api)
 
 # Build
 
