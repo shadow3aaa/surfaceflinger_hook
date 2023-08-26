@@ -52,7 +52,7 @@ impl Connection {
         let _ = fs::remove_file(&input_path); */
 
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
-        OpenOptions::new().create(true).open(&input_path)?;
+        fs::write(&input_path, "")?;
 
         let _ = OpenOptions::new().write(true).open(&jank_path)?; // 确认连接
 

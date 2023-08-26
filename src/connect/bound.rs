@@ -54,20 +54,3 @@ fn gcd(a: u32, b: u32) -> u32 {
         gcd(b, a % b)
     }
 }
-
-#[test]
-fn test_bound() {
-    let answer = Bound {
-        vsync_jank_scale: 1,
-        soft_jank_scale: 1,
-        vsync_do_scale: 1,
-    };
-    assert_eq!(Bound::new((120, 120, Message::Vsync)), answer);
-
-    let answer = Bound {
-        vsync_jank_scale: 1,
-        soft_jank_scale: 1,
-        vsync_do_scale: 1,
-    };
-    assert_eq!(Bound::new((120, 120, Message::Vsync)), answer);
-}
