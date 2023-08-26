@@ -110,8 +110,9 @@ impl Connection {
 
     fn connection_thread(pipe: &Path, rx: &Receiver<u32>) {
         loop {
-            let _level = rx.recv().unwrap();
-            let _ = fs::write(pipe, "{level}\n");
+            let level = rx.recv().unwrap();
+            let message = format!("{level}\n");
+            let _ = fs::write(pipe, message);
         }
     }
 }
