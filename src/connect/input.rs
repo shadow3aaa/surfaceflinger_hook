@@ -11,10 +11,9 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{convert::AsRef, io::prelude::*};
+use std::{convert::AsRef, fs};
 
-use log::error;
-use unix_named_pipe as named_pipe;
+use log::debug;
 
 use crate::Message;
 
@@ -22,56 +21,41 @@ use super::{bound::Bound, Connection};
 
 impl Connection {
     pub fn update_input(&mut self) {
-        let Ok(mut pipe) = named_pipe::open_read(&self.input_path) else {
+        let input_raw = fs::read_to_string(&self.input_path).unwrap();
+
+        if input_raw == self.input_raw {
             return;
-        }; // 非堵塞的打开管道，有新数据就更新
+        }
 
-        let mut r = String::new();
-
-        if pipe.read_to_string(&mut r).is_ok() {
-            self.input = Self::parse_input(r);
+        if let Some(input) = Self::parse_input(&input_raw) {
+            self.input = input;
+            self.input_raw = input_raw;
             self.bound = Bound::new(self.input);
+            debug!("{:#?}", self.bound);
         }
     }
 
-    pub fn parse_input<S: AsRef<str>>(i: S) -> (u32, u32, Message) {
-        let input = i.as_ref();
+    pub fn parse_input<S: AsRef<str>>(i: S) -> Option<(u32, u32, Message)> {
+        let input = i.as_ref().trim();
 
-        let Some(input) = input.lines().last() else {
-            error!("Failed to parse input, use default");
-            return (120, 120, Message::Vsync);
-        };
+        if input.is_empty() {
+            return None;
+        }
+
+        let input = input.lines().last()?;
 
         let mut input = input.split(':');
 
-        let target_fps = input
-            .next()
-            .and_then(|i| i.parse::<u32>().ok())
-            .unwrap_or_else(|| {
-                error!("Failed to parse target_fps");
-                120
-            });
+        let target_fps = input.next().and_then(|i| i.parse::<u32>().ok())?;
 
-        let display_fps = input
-            .next()
-            .and_then(|i| i.parse::<u32>().ok())
-            .unwrap_or_else(|| {
-                error!("Failed to parse display_fps");
-                120
-            });
+        let display_fps = input.next().and_then(|i| i.parse::<u32>().ok())?;
 
-        let message = input
-            .next()
-            .and_then(|i| match i {
-                "vsync" => Some(Message::Vsync),
-                "soft" => Some(Message::Soft),
-                _ => None,
-            })
-            .unwrap_or_else(|| {
-                error!("Failed to parse count_on");
-                Message::Vsync
-            });
+        let message = input.next().and_then(|i| match i {
+            "vsync" => Some(Message::Vsync),
+            "soft" => Some(Message::Soft),
+            _ => None,
+        })?;
 
-        (target_fps, display_fps, message)
+        Some((target_fps, display_fps, message))
     }
 }

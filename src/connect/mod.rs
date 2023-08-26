@@ -19,6 +19,7 @@ use std::{
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, Sender},
     thread,
+    time::Duration,
 };
 
 use unix_named_pipe as named_pipe;
@@ -32,6 +33,7 @@ use bound::Bound;
 pub struct Connection {
     sx: Sender<u32>,
     input: (u32, u32, Message), // target_fps:display_fps:count_on
+    input_raw: String,
     input_path: PathBuf,
     bound: Bound,
     vsync_count: u32,
@@ -50,9 +52,8 @@ impl Connection {
         let _ = fs::remove_file(&input_path); */
 
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
-        named_pipe::create(&input_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
+        OpenOptions::new().create(true).open(&input_path)?;
 
-        let _ = OpenOptions::new().read(true).open(&input_path)?;
         let _ = OpenOptions::new().write(true).open(&jank_path)?; // 确认连接
 
         let (sx, rx) = mpsc::channel();
@@ -60,13 +61,20 @@ impl Connection {
             .name("HookConnection".into())
             .spawn(move || Self::connection_thread(&jank_path, &rx))?;
 
-        let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
-        let input = Self::parse_input(temp);
+        let (input, input_raw) = loop {
+            let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
+            if let Some(input) = Self::parse_input(&temp) {
+                break (input, temp);
+            }
+            thread::sleep(Duration::from_secs(1));
+        };
+
         let bound = Bound::new(input);
 
         Ok(Self {
             sx,
             input,
+            input_raw,
             input_path,
             bound,
             vsync_count: 0,
