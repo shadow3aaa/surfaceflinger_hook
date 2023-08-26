@@ -38,7 +38,7 @@ inject() {
 	local pid=$(pidof surfaceflinger)
 
 	# reserve time for something unexpected
-	# sleep 60s
+	sleep 60s
     
     chmod +x $BASEDIR/inject
 	$BASEDIR/inject -p $pid -so $SO -symbols handle_hook
