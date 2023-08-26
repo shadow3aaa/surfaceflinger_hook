@@ -15,7 +15,7 @@ mod bound;
 mod input;
 
 use std::{
-    fs::{File, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::prelude::*,
     path::{Path, PathBuf},
     sync::mpsc::{self, Receiver, Sender},
@@ -53,7 +53,7 @@ impl Connection {
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
         named_pipe::create(&input_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
 
-        let mut input_pipe = OpenOptions::new().read(true).open(&input_path)?;
+        let _input_pipe = OpenOptions::new().read(true).open(&input_path)?;
         let output_pipe = OpenOptions::new().write(true).open(&jank_path)?;
 
         let (sx, rx) = mpsc::channel();
@@ -61,9 +61,7 @@ impl Connection {
             .name("HookConnection".into())
             .spawn(move || Self::connection_thread(output_pipe, &rx))?;
 
-        let mut temp = String::new();
-        input_pipe.read_to_string(&mut temp)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
-
+        let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
         let input = Self::parse_input(temp);
         let bound = Bound::new(input);
 
