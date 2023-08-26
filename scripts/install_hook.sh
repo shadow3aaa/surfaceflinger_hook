@@ -1,4 +1,4 @@
-BASEDIR=$(realpath $0)
+BASEDIR=$(realpath ${0%/*})
 HOOK_DIR=/dev/surfaceflinger_hook
 SO=$HOOK_DIR/libsurfaceflinger_hook.so
 
