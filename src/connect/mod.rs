@@ -89,7 +89,7 @@ impl Connection {
             Message::Vsync => {
                 if Message::Vsync == m && self.vsync_count >= self.bound.vsync_do_scale {
                     let min = self.bound.soft_jank_scale;
-                    let jank_level = self.soft_count.saturating_sub(min);
+                    let jank_level = min.saturating_sub(self.soft_count);
 
                     let _ = self.sx.send(jank_level);
 
@@ -99,7 +99,7 @@ impl Connection {
             }
             Message::Soft => {
                 let max = self.bound.vsync_jank_scale;
-                let jank_level = max.saturating_sub(self.vsync_count);
+                let jank_level = self.vsync_count.saturating_sub(max);
 
                 let _ = self.sx.send(jank_level);
 

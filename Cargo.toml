@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = [ "cdylib" ]
 
 [dependencies]
-dobby-api = "0.1.4"
+dobby-api = "0.1.6"
 goblin = "0.7.1"
 log = "0.4.20"
 android_logger = "0.13.3"

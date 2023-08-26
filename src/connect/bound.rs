@@ -13,7 +13,7 @@
 *  limitations under the License. */
 use crate::Message;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Bound {
     pub vsync_jank_scale: u32, // 两次合成最多有多少个vsync
     pub soft_jank_scale: u32,  // vsync_do_scale次vsync最少要有几次合成
@@ -53,4 +53,21 @@ fn gcd(a: u32, b: u32) -> u32 {
     } else {
         gcd(b, a % b)
     }
+}
+
+#[test]
+fn test_bound() {
+    let answer = Bound {
+        vsync_jank_scale: 1,
+        soft_jank_scale: 1,
+        vsync_do_scale: 1,
+    };
+    assert_eq!(Bound::new((120, 120, Message::Vsync)), answer);
+
+    let answer = Bound {
+        vsync_jank_scale: 1,
+        soft_jank_scale: 1,
+        vsync_do_scale: 1,
+    };
+    assert_eq!(Bound::new((120, 120, Message::Vsync)), answer);
 }
