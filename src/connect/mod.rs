@@ -85,9 +85,9 @@ impl Connection {
     pub fn notice(&mut self, m: Message) {
         let count_on = self.input.2;
 
-        match count_on {
+        match m {
             Message::Vsync => {
-                if Message::Vsync == m && self.vsync_count >= self.bound.vsync_do_scale {
+                if Message::Vsync == count_on && self.vsync_count >= self.bound.vsync_do_scale {
                     let min = self.bound.soft_jank_scale;
                     let jank_level = min.saturating_sub(self.soft_count);
 
@@ -95,22 +95,23 @@ impl Connection {
 
                     self.soft_count = 0;
                     self.vsync_count = 0;
+                } else {
+                    self.vsync_count += 1;
                 }
             }
             Message::Soft => {
-                let max = self.bound.vsync_jank_scale;
-                let jank_level = self.vsync_count.saturating_sub(max);
+                if Message::Soft == count_on {
+                    let max = self.bound.vsync_jank_scale;
+                    let jank_level = self.vsync_count.saturating_sub(max);
 
-                let _ = self.sx.send(jank_level);
+                    let _ = self.sx.send(jank_level);
 
-                self.soft_count = 0;
-                self.vsync_count = 0;
+                    self.soft_count = 0;
+                    self.vsync_count = 0;
+                } else {
+                    self.soft_count += 1;
+                }
             }
-        }
-
-        match m {
-            Message::Vsync => self.vsync_count += 1,
-            Message::Soft => self.soft_count += 1,
         }
 
         self.update_input();

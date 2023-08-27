@@ -75,7 +75,7 @@ unsafe fn hook_main() -> Result<()> {
     let address = post_hook_comp as Address;
     SOFT_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
 
-    info!("Hooked commit func");
+    info!("Hooked postComposition func");
 
     let (sx, rx) = mpsc::channel();
     VSYNC_SENDER = Some(sx.clone());
