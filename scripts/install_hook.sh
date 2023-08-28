@@ -30,7 +30,7 @@ set_dir() {
 }
 
 set_permissions() {
-	magiskpolicy --live "allow surfaceflinger * * *"
+	# magiskpolicy --live "allow surfaceflinger * * *"
 	set_perm_recursive $HOOK_DIR graphics system 0777 0644
 }
 
