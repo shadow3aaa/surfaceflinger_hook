@@ -31,7 +31,7 @@ package: inject hook_lib
 
 ifeq ($(RELEASE), true)
 	@cp -f AndroidPtraceInject/target/aarch64-linux-android/release/inject output/
-	@cp -f target/aarch64-linux-android/release/libsurfaceflinger_hook.so
+	@cp -f target/aarch64-linux-android/release/libsurfaceflinger_hook.so output/
 else
 	@cp -f AndroidPtraceInject/target/aarch64-linux-android/debug/inject output/
 	@cp -f target/aarch64-linux-android/debug/libsurfaceflinger_hook.so output/
