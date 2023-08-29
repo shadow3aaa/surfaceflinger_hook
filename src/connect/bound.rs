@@ -29,11 +29,11 @@ impl Bound {
         let soft_jank_scale = soft_jank_scale.ceil() as u32;
         let soft_jank_scale = soft_jank_scale.max(1);
 
-        let (vsync_do_scale, mut vsync_jank_scale) = reduce_fraction(input.1, input.0);
+        let (vsync_do_scale, vsync_jank_scale) = reduce_fraction(input.1, input.0);
 
-        if vsync_jank_scale != 1 {
+        /* if vsync_jank_scale != 1 {
             vsync_jank_scale += 1;
-        }
+        } */
 
         Self {
             vsync_jank_scale,
