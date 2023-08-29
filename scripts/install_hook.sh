@@ -32,6 +32,7 @@ set_dir() {
 set_permissions() {
 	# magiskpolicy --live "allow surfaceflinger * * *"
 	set_perm_recursive $HOOK_DIR graphics system 0777 0644
+	chmod +x $BASEDIR/inject
 }
 
 inject() {
@@ -39,8 +40,7 @@ inject() {
 
 	# reserve time for something unexpected
 	sleep 60s
-    
-    chmod +x $BASEDIR/inject
+
 	$BASEDIR/inject -p $pid -so $SO -symbols handle_hook
 }
 
