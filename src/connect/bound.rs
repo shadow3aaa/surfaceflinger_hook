@@ -26,7 +26,12 @@ impl Bound {
     #[allow(clippy::cast_sign_loss)]
     pub fn new(input: (u32, u32, Message)) -> Self {
         let soft_jank_scale = input.1 as f32 / input.0 as f32;
-        let soft_jank_scale = soft_jank_scale.max(1.0).ceil() as u32;
+        let soft_jank_scale = soft_jank_scale.ceil() as u32;
+        let mut soft_jank_scale = soft_jank_scale.max(1);
+
+        if soft_jank_scale != 1 {
+            soft_jank_scale += 1;
+        }
 
         let (vsync_do_scale, vsync_jank_scale) = reduce_fraction(input.1, input.0);
 

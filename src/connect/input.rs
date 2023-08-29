@@ -13,8 +13,6 @@
 *  limitations under the License. */
 use std::{convert::AsRef, fs};
 
-use log::debug;
-
 use crate::Message;
 
 use super::{bound::Bound, Connection};
@@ -31,7 +29,6 @@ impl Connection {
             self.input = input;
             self.input_raw = input_raw;
             self.bound = Bound::new(self.input);
-            debug!("{:#?}", self.bound);
         }
     }
 

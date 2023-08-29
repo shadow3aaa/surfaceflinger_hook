@@ -22,6 +22,7 @@ use std::{
     time::Duration,
 };
 
+use log::debug;
 use unix_named_pipe as named_pipe;
 
 use crate::{
@@ -92,6 +93,8 @@ impl Connection {
                     let jank_level = min.saturating_sub(self.soft_count);
 
                     let _ = self.sx.send(jank_level);
+                    debug!("soft_count: {}", self.soft_count);
+                    // debug!("{:?}", self.bound);
 
                     self.soft_count = 0;
                     self.vsync_count = 0;
@@ -105,6 +108,8 @@ impl Connection {
                     let jank_level = self.vsync_count.saturating_sub(max);
 
                     let _ = self.sx.send(jank_level);
+                    debug!("vsync_count: {}", self.vsync_count);
+                    // debug!("{:?}", self.bound);
 
                     self.soft_count = 0;
                     self.vsync_count = 0;
