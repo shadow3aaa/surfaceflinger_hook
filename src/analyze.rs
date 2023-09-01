@@ -31,10 +31,22 @@ pub fn jank(rx: &Receiver<Message>) {
 
     let mut vsync_fps = Fps::default();
 
-    let mut alma = ALMA::new(Echo::new(), 5);
+    let target_fps = connection.get_input().unwrap_or_default();
+
+    let win = target_fps.fps / 10;
+    let win = win.min(5);
+
+    let mut alma = ALMA::new(Echo::new(), win.try_into().unwrap());
 
     loop {
-        let target_fps = connection.get_input().unwrap_or_default();
+        let target_fps_up = connection.get_input().unwrap_or_default();
+
+        if target_fps != target_fps_up {
+            let win = target_fps.fps / 10;
+            let win = win.min(5);
+            alma = ALMA::new(Echo::new(), win.try_into().unwrap());
+            continue;
+        }
 
         let message = rx.recv().unwrap();
         let now = Instant::now();
@@ -62,10 +74,12 @@ pub fn jank(rx: &Receiver<Message>) {
 
         let diff_ns = cur_frametime_ns - target_frametime_ns;
 
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
         if diff_ns < 0.0 {
             connection.send_jank(0);
         } else {
-            let level = diff_ns / Duration::from_nanos(100000).as_secs_f64().floor();
+            let level = diff_ns / Duration::from_nanos(100_000).as_secs_f64().floor();
             connection.send_jank(level as u32);
         }
     }
