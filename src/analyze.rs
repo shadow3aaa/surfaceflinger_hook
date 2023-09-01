@@ -67,7 +67,7 @@ pub fn jank(rx: &Receiver<Message>) {
                 || connection.send_jank(0),
                 |d| {
                     let level = d.as_nanos() / Duration::from_nanos(10000).as_nanos();
-                    connection.send_jank(level.try_into().unwrap());
+                    connection.send_jank(level.try_into().unwrap_or(u32::MAX));
                 },
             );
     }
