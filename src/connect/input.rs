@@ -13,9 +13,10 @@
 *  limitations under the License. */
 use std::{convert::AsRef, fs};
 
-use crate::Message;
+use log::debug;
 
 use super::{bound::Bound, Connection};
+use crate::Message;
 
 impl Connection {
     pub fn update_input(&mut self) {
@@ -29,6 +30,8 @@ impl Connection {
             self.input = input;
             self.input_raw = input_raw;
             self.bound = Bound::new(self.input);
+
+            debug!("New bound: {:#?}", self.bound);
         }
     }
 

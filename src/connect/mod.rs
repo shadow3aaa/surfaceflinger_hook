@@ -109,7 +109,7 @@ impl Connection {
 
                     let _ = self.sx.send(jank_level);
                     debug!("vsync_count: {}", self.vsync_count);
-                    // debug!("{:?}", self.bound);
+                    debug!("jank_level: {jank_level}");
 
                     self.soft_count = 0;
                     self.vsync_count = 0;
