@@ -13,35 +13,39 @@
 *  limitations under the License. */
 use std::fs;
 
+use log::error;
+
 use super::Connection;
-use crate::fps::Fps;
+use crate::{
+    error::{Error, Result},
+    fps::Fps,
+};
 
 impl Connection {
-    pub fn update_input(&mut self, d: Fps) {
+    pub fn update_input(&mut self) {
         let input_raw = fs::read_to_string(&self.input_path).unwrap();
         if input_raw == self.input_raw {
             return;
         }
 
         self.input_raw = input_raw;
-        self.input = Self::parse_input(&self.input_raw).unwrap_or(d);
+        Self::parse_input(&self.input_raw).map_or_else(|e| error!("{e:?}"), |i| self.input = i);
     }
 
-    pub fn parse_input<S: AsRef<str>>(i: S) -> Option<Fps> {
+    pub fn parse_input<S: AsRef<str>>(i: S) -> Result<Option<Fps>> {
         let input = i.as_ref().trim();
 
         if input.is_empty() {
-            return None;
+            return Err(Error::Other("No input now"));
         }
 
-        let target_fps = input.split(':').last().and_then(|t| {
-            if t.contains("none") {
-                None
-            } else {
-                t.parse::<u32>().ok()
-            }
-        })?;
+        if input.contains("none") {
+            return Ok(None);
+        }
 
-        Some(Fps::from_fps(target_fps))
+        let fps = input
+            .parse()
+            .map_err(|_| Error::Other("Failed to parse input"))?;
+        Ok(Some(Fps::from_fps(fps)))
     }
 }

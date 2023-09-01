@@ -16,11 +16,15 @@ use std::{
     time::{Duration, Instant},
 };
 
+use log::debug;
+
 use crate::{connect::Connection, fps::Fps, Message};
 
 // Todo: 目前只做不堵塞surfaceflinger以等待api链接用，应修改connection优化掉此线程
 pub fn jank(rx: &Receiver<Message>) {
+    debug!("Connecting to root process");
     let mut connection = Connection::init_and_wait().unwrap(); // 等待root程序链接
+    debug!("Connected");
 
     let mut vsync_stamp = Instant::now();
     let mut soft_stamp = Instant::now();
@@ -28,7 +32,7 @@ pub fn jank(rx: &Receiver<Message>) {
     let mut vsync_fps = Fps::default();
 
     loop {
-        connection.update_input(vsync_fps);
+        connection.update_input();
 
         let message = rx.recv().unwrap();
         let now = Instant::now();

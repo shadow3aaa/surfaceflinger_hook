@@ -15,7 +15,7 @@
 mod input;
 
 use std::{
-    fs::{self},
+    fs,
     path::{Path, PathBuf},
     thread,
     time::Duration,
@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct Connection {
-    input: Fps, // target_fps
+    input: Option<Fps>, // target_fps
     input_raw: String,
     input_path: PathBuf,
     jank_path: PathBuf,
@@ -49,7 +49,7 @@ impl Connection {
 
         let (input, input_raw) = loop {
             let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
-            if let Some(input) = Self::parse_input(&temp) {
+            if let Ok(input) = Self::parse_input(&temp) {
                 break (input, temp);
             }
             thread::sleep(Duration::from_secs(1));
