@@ -14,7 +14,7 @@ android_logger = "0.13.3"
 thiserror = "1.0.47"
 unix-named-pipe = "0.2.0"
 derive_more = "0.99.17"
-yata = "0.6.1"
+sliding_features = "2.5.3"
 
 [profile.release]
 codegen-units = 1

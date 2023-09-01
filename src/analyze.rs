@@ -17,7 +17,7 @@ use std::{
 };
 
 use log::debug;
-use yata::{methods::DEMA, prelude::*};
+use sliding_features::{Echo, View, ALMA};
 
 use crate::{connect::Connection, fps::Fps, Message};
 
@@ -31,7 +31,7 @@ pub fn jank(rx: &Receiver<Message>) {
 
     let mut vsync_fps = Fps::default();
 
-    let mut dema = DEMA::new(5, &0.0).unwrap();
+    let mut alma = ALMA::new(Echo::new(), 5);
 
     loop {
         let target_fps = connection.get_input().unwrap_or_default();
@@ -52,23 +52,21 @@ pub fn jank(rx: &Receiver<Message>) {
             }
         };
 
-        let soft_fps = Fps::from_frametime(Duration::from_secs_f64(
-            dema.next(&soft_fps.frametime.as_secs_f64()),
-        ));
+        alma.update(soft_fps.frametime.as_secs_f64());
+        let cur_frametime_ns = alma.last();
+        let target_frametime_ns = target_fps.frametime.as_secs_f64();
 
-        debug!("cur fps: {soft_fps:?}");
-        debug!("target fps: {target_fps:?}");
-        debug!("vsync fps: {vsync_fps:?}");
+        debug!("cur frametime: {cur_frametime_ns}");
+        debug!("target fps: {target_frametime_ns}");
+        debug!("vsync_fps: {vsync_fps:?}");
 
-        soft_fps
-            .frametime
-            .checked_sub(target_fps.frametime)
-            .map_or_else(
-                || connection.send_jank(0),
-                |d| {
-                    let level = d.as_nanos() / Duration::from_nanos(10000).as_nanos();
-                    connection.send_jank(level.try_into().unwrap_or(u32::MAX));
-                },
-            );
+        let diff_ns = cur_frametime_ns - target_frametime_ns;
+
+        if diff_ns < 0.0 {
+            connection.send_jank(0);
+        } else {
+            let level = diff_ns / Duration::from_nanos(100000).as_secs_f64().floor();
+            connection.send_jank(level as u32);
+        }
     }
 }
