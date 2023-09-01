@@ -11,34 +11,27 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-mod bound;
+// mod bound;
 mod input;
 
 use std::{
     fs::{self, OpenOptions},
     path::{Path, PathBuf},
-    sync::mpsc::{self, Receiver, Sender},
     thread,
     time::Duration,
 };
 
-use log::debug;
 use unix_named_pipe as named_pipe;
 
 use crate::{
-    error::{Error, Result},
-    Message, API_DIR,
+    error::{Error, Result}, API_DIR, fps::Fps,
 };
-use bound::Bound;
 
 pub struct Connection {
-    sx: Sender<u32>,
-    input: (u32, u32, Message), // target_fps:display_fps:count_on
+    input: Fps, // target_fps
     input_raw: String,
     input_path: PathBuf,
-    bound: Bound,
-    vsync_count: u32,
-    soft_count: u32,
+    jank_path: PathBuf,
 }
 
 impl Connection {
@@ -48,19 +41,10 @@ impl Connection {
         let jank_path = Path::new(API_DIR).join("jank");
         let input_path = Path::new(API_DIR).join("input");
 
-        // 目前hook文件夹在/dev(tmpfs)下，重启不保留，删除无意义
-        /* let _ = fs::remove_file(&jank_path);
-        let _ = fs::remove_file(&input_path); */
-
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
         fs::write(&input_path, "")?;
 
         let _ = OpenOptions::new().write(true).open(&jank_path)?; // 确认连接
-
-        let (sx, rx) = mpsc::channel();
-        thread::Builder::new()
-            .name("HookConnection".into())
-            .spawn(move || Self::connection_thread(&jank_path, &rx))?;
 
         let (input, input_raw) = loop {
             let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
@@ -70,63 +54,16 @@ impl Connection {
             thread::sleep(Duration::from_secs(1));
         };
 
-        let bound = Bound::new(input);
-
         Ok(Self {
-            sx,
             input,
             input_raw,
             input_path,
-            bound,
-            vsync_count: 0,
-            soft_count: 0,
+            jank_path,
         })
     }
 
-    pub fn notice(&mut self, m: Message) {
-        let count_on = self.input.2;
-
-        match m {
-            Message::Vsync => {
-                if Message::Vsync == count_on && self.vsync_count >= self.bound.vsync_do_scale {
-                    let min = self.bound.soft_jank_scale;
-                    let jank_level = min.saturating_sub(self.soft_count);
-
-                    let _ = self.sx.send(jank_level);
-                    debug!("soft_count: {}", self.soft_count);
-                    // debug!("{:?}", self.bound);
-
-                    self.soft_count = 0;
-                    self.vsync_count = 0;
-                } else {
-                    self.vsync_count += 1;
-                }
-            }
-            Message::Soft => {
-                if Message::Soft == count_on {
-                    let max = self.bound.vsync_jank_scale;
-                    let jank_level = self.vsync_count.saturating_sub(max);
-
-                    let _ = self.sx.send(jank_level);
-                    debug!("vsync_count: {}", self.vsync_count);
-                    debug!("jank_level: {jank_level}");
-
-                    self.soft_count = 0;
-                    self.vsync_count = 0;
-                } else {
-                    self.soft_count += 1;
-                }
-            }
-        }
-
-        self.update_input();
-    }
-
-    fn connection_thread(pipe: &Path, rx: &Receiver<u32>) {
-        loop {
-            let level = rx.recv().unwrap();
-            let message = format!("{level}\n");
-            let _ = fs::write(pipe, message);
-        }
+    pub fn send_jank(&self, j: u32) {
+        let message = format!("{j}\n");
+        let _ = fs::write(&self.jank_path, message);
     }
 }

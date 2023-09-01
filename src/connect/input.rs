@@ -11,51 +11,37 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{convert::AsRef, fs};
+use std::fs;
 
-use log::debug;
-
-use super::{bound::Bound, Connection};
-use crate::Message;
+use super::Connection;
+use crate::fps::Fps;
 
 impl Connection {
-    pub fn update_input(&mut self) {
+    pub fn update_input(&mut self, d: Fps) {
         let input_raw = fs::read_to_string(&self.input_path).unwrap();
-
         if input_raw == self.input_raw {
             return;
         }
 
-        if let Some(input) = Self::parse_input(&input_raw) {
-            self.input = input;
-            self.input_raw = input_raw;
-            self.bound = Bound::new(self.input);
-
-            debug!("New bound: {:#?}", self.bound);
-        }
+        self.input_raw = input_raw;
+        self.input = Self::parse_input(&self.input_raw).unwrap_or(d);
     }
 
-    pub fn parse_input<S: AsRef<str>>(i: S) -> Option<(u32, u32, Message)> {
+    pub fn parse_input<S: AsRef<str>>(i: S) -> Option<Fps> {
         let input = i.as_ref().trim();
 
         if input.is_empty() {
             return None;
         }
 
-        let input = input.lines().last()?;
-
-        let mut input = input.split(':');
-
-        let target_fps = input.next().and_then(|i| i.parse::<u32>().ok())?;
-
-        let display_fps = input.next().and_then(|i| i.parse::<u32>().ok())?;
-
-        let message = input.next().and_then(|i| match i {
-            "vsync" => Some(Message::Vsync),
-            "soft" => Some(Message::Soft),
-            _ => None,
+        let target_fps = input.split(':').last().and_then(|t| {
+            if t.contains("none") {
+                None
+            } else {
+                t.parse::<u32>().ok()
+            }
         })?;
 
-        Some((target_fps, display_fps, message))
+        Some(Fps::from_fps(target_fps))
     }
 }

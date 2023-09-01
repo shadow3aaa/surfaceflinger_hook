@@ -19,13 +19,14 @@
 compile_error!("Only for aarch64 android");
 
 mod analyze;
+mod fps;
 mod connect;
 mod error;
 mod hook;
 
 use std::{
     mem, ptr,
-    sync::mpsc::{self, Sender},
+    sync::mpsc::{self, SyncSender},
     thread,
 };
 
@@ -41,8 +42,8 @@ pub(crate) const API_DIR: &str = "/dev/surfaceflinger_hook";
 static mut VSYNC_FUNC_PTR: Address = ptr::null_mut();
 static mut SOFT_FUNC_PTR: Address = ptr::null_mut();
 
-static mut VSYNC_SENDER: Option<Sender<Message>> = None;
-static mut SOFT_SENDER: Option<Sender<Message>> = None;
+static mut VSYNC_SENDER: Option<SyncSender<Message>> = None;
+static mut SOFT_SENDER: Option<SyncSender<Message>> = None;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Message {
@@ -77,7 +78,7 @@ unsafe fn hook_main() -> Result<()> {
 
     info!("Hooked postComposition func");
 
-    let (sx, rx) = mpsc::channel();
+    let (sx, rx) = mpsc::sync_channel(1024);
     VSYNC_SENDER = Some(sx.clone());
     SOFT_SENDER = Some(sx);
 
