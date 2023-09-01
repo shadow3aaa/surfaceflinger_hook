@@ -44,9 +44,8 @@ impl Connection {
         let input_path = Path::new(API_DIR).join("input");
 
         named_pipe::create(&jank_path, Some(0o644)).map_err(|_| Error::NamedPipe)?;
-        fs::write(&input_path, "")?;
-
-        let _ = OpenOptions::new().write(true).open(&jank_path)?; // 确认连接
+        fs::write(&input_path, ":")?;
+        fs::write(&jank_path, "0\n")?; // 确认连接
 
         let (input, input_raw) = loop {
             let temp = fs::read_to_string(&input_path)?; // 等待root程序通过api初始化input，同时在此处与api确认连接
