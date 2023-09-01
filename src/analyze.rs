@@ -21,7 +21,6 @@ use yata::{methods::DEMA, prelude::*};
 
 use crate::{connect::Connection, fps::Fps, Message};
 
-// Todo: 目前只做不堵塞surfaceflinger以等待api链接用，应修改connection优化掉此线程
 pub fn jank(rx: &Receiver<Message>) {
     debug!("Connecting to root process");
     let mut connection = Connection::init_and_wait().unwrap(); // 等待root程序链接
@@ -53,12 +52,7 @@ pub fn jank(rx: &Receiver<Message>) {
             }
         };
 
-        #[allow(clippy::cast_precision_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        #[allow(clippy::cast_sign_loss)]
-        let soft_fps = Fps::from_frametime(Duration::from_millis(
-            dema.next(&(soft_fps.frametime.as_millis() as f64)) as u64,
-        ));
+        let soft_fps = Fps::from_frametime(Duration::from_secs_f64(dema.next(&soft_fps.frametime.as_secs_f64())));
 
         debug!("cur fps: {soft_fps:?}");
         debug!("target fps: {target_fps:?}");
