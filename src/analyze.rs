@@ -52,7 +52,9 @@ pub fn jank(rx: &Receiver<Message>) {
             }
         };
 
-        let soft_fps = Fps::from_frametime(Duration::from_secs_f64(dema.next(&soft_fps.frametime.as_secs_f64())));
+        let soft_fps = Fps::from_frametime(Duration::from_secs_f64(
+            dema.next(&soft_fps.frametime.as_secs_f64()),
+        ));
 
         debug!("cur fps: {soft_fps:?}");
         debug!("target fps: {target_fps:?}");
