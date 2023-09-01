@@ -15,7 +15,7 @@
 mod input;
 
 use std::{
-    fs::{self, OpenOptions},
+    fs::{self},
     path::{Path, PathBuf},
     thread,
     time::Duration,

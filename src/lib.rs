@@ -96,7 +96,8 @@ unsafe extern "C" fn post_hook_vsync(a: i64, b: i64, c: i64) {
     ori_func(a, b, c);
 
     if let Some(sx) = &VSYNC_SENDER {
-        sx.try_send(Message::Vsync).unwrap_or_else(|e| error!("{e:?}"));
+        sx.try_send(Message::Vsync)
+            .unwrap_or_else(|e| error!("{e:?}"));
     }
 }
 
@@ -107,6 +108,7 @@ unsafe extern "C" fn post_hook_comp() {
     ori_func();
 
     if let Some(sx) = &SOFT_SENDER {
-        sx.try_send(Message::Soft).unwrap_or_else(|e| error!("{e:?}"));
+        sx.try_send(Message::Soft)
+            .unwrap_or_else(|e| error!("{e:?}"));
     }
 }
