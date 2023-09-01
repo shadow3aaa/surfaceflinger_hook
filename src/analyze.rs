@@ -11,9 +11,12 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{sync::mpsc::Receiver, time::{Instant, Duration}};
+use std::{
+    sync::mpsc::Receiver,
+    time::{Duration, Instant},
+};
 
-use crate::{connect::Connection, Message, fps::Fps};
+use crate::{connect::Connection, fps::Fps, Message};
 
 // Todo: 目前只做不堵塞surfaceflinger以等待api链接用，应修改connection优化掉此线程
 pub fn jank(rx: &Receiver<Message>) {
@@ -42,13 +45,16 @@ pub fn jank(rx: &Receiver<Message>) {
                 fps
             }
         };
-        
-        match vsync_fps.frametime.checked_sub(soft_fps.frametime) {
-            Some(d) => {
-                let level = d.as_nanos() / Duration::from_nanos(750).as_nanos();
-                connection.send_jank(level.try_into().unwrap())
-            },
-            None => connection.send_jank(0),
-        }
+
+        vsync_fps
+            .frametime
+            .checked_sub(soft_fps.frametime)
+            .map_or_else(
+                || connection.send_jank(0),
+                |d| {
+                    let level = d.as_nanos() / Duration::from_nanos(750).as_nanos();
+                    connection.send_jank(level.try_into().unwrap());
+                },
+            );
     }
 }

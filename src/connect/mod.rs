@@ -24,7 +24,9 @@ use std::{
 use unix_named_pipe as named_pipe;
 
 use crate::{
-    error::{Error, Result}, API_DIR, fps::Fps,
+    error::{Error, Result},
+    fps::Fps,
+    API_DIR,
 };
 
 pub struct Connection {

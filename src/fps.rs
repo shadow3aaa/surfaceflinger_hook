@@ -18,14 +18,12 @@ use derive_more::{Add, Sub};
 #[derive(Debug, PartialEq, Eq, Add, Sub, Default, Clone, Copy)]
 pub struct Fps {
     pub fps: u32,
-    pub frametime: Duration
+    pub frametime: Duration,
 }
 
 impl Fps {
     pub fn from_fps(f: u32) -> Self {
-        let frametime = Duration::from_secs(1)
-            .checked_div(f)
-            .unwrap_or_default();
+        let frametime = Duration::from_secs(1).checked_div(f).unwrap_or_default();
 
         Self { fps: f, frametime }
     }
@@ -33,7 +31,10 @@ impl Fps {
     pub fn from_frametime(d: Duration) -> Self {
         let fps = Duration::from_secs(1).as_nanos() / d.as_nanos();
 
-        Self { fps: fps.try_into().unwrap(), frametime: d }
+        Self {
+            fps: fps.try_into().unwrap(),
+            frametime: d,
+        }
     }
 }
 

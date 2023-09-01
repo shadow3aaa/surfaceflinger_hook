@@ -19,9 +19,9 @@
 compile_error!("Only for aarch64 android");
 
 mod analyze;
-mod fps;
 mod connect;
 mod error;
+mod fps;
 mod hook;
 
 use std::{
