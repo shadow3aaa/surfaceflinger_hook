@@ -22,14 +22,16 @@ use crate::{
 };
 
 impl Connection {
-    pub fn update_input(&mut self) {
+    pub fn get_input(&mut self) -> Option<Fps> {
         let input_raw = fs::read_to_string(&self.input_path).unwrap();
         if input_raw == self.input_raw {
-            return;
+            return self.input;
         }
 
         self.input_raw = input_raw;
         Self::parse_input(&self.input_raw).map_or_else(|e| error!("{e:?}"), |i| self.input = i);
+
+        self.input
     }
 
     pub fn parse_input<S: AsRef<str>>(i: S) -> Result<Option<Fps>> {
@@ -44,6 +46,7 @@ impl Connection {
         }
 
         let fps = input
+            .trim()
             .parse()
             .map_err(|_| Error::Other("Failed to parse input"))?;
         Ok(Some(Fps::from_fps(fps)))

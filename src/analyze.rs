@@ -17,6 +17,7 @@ use std::{
 };
 
 use log::debug;
+use yata::{methods::DEMA, prelude::*};
 
 use crate::{connect::Connection, fps::Fps, Message};
 
@@ -31,8 +32,10 @@ pub fn jank(rx: &Receiver<Message>) {
 
     let mut vsync_fps = Fps::default();
 
+    let mut dema = DEMA::new(5, &0.0).unwrap();
+
     loop {
-        connection.update_input();
+        let target_fps = connection.get_input().unwrap_or_default();
 
         let message = rx.recv().unwrap();
         let now = Instant::now();
@@ -50,13 +53,24 @@ pub fn jank(rx: &Receiver<Message>) {
             }
         };
 
-        vsync_fps
+        #[allow(clippy::cast_precision_loss)]
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
+        let soft_fps = Fps::from_frametime(Duration::from_millis(
+            dema.next(&(soft_fps.frametime.as_millis() as f64)) as u64,
+        ));
+
+        debug!("cur fps: {soft_fps:?}");
+        debug!("target fps: {target_fps:?}");
+        debug!("vsync fps: {vsync_fps:?}");
+
+        soft_fps
             .frametime
-            .checked_sub(soft_fps.frametime)
+            .checked_sub(target_fps.frametime)
             .map_or_else(
                 || connection.send_jank(0),
                 |d| {
-                    let level = d.as_nanos() / Duration::from_nanos(750).as_nanos();
+                    let level = d.as_nanos() / Duration::from_nanos(10000).as_nanos();
                     connection.send_jank(level.try_into().unwrap());
                 },
             );

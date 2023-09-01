@@ -30,7 +30,7 @@ use crate::{
 };
 
 pub struct Connection {
-    input: Option<Fps>, // target_fps
+    pub input: Option<Fps>, // target_fps
     input_raw: String,
     input_path: PathBuf,
     jank_path: PathBuf,
