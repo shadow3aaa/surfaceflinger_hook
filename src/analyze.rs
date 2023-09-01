@@ -24,31 +24,32 @@ use crate::{connect::Connection, fps::Fps, Message};
 pub fn jank(rx: &Receiver<Message>) {
     debug!("Connecting to root process");
     let mut connection = Connection::init_and_wait().unwrap(); // 等待root程序链接
-    debug!("Connected");
+    debug!("Connected to root process");
 
     let mut vsync_stamp = Instant::now();
     let mut soft_stamp = Instant::now();
 
     let mut vsync_fps = Fps::default();
 
-    let target_fps = connection.get_input().unwrap_or_default();
+    let mut target_fps = connection.get_input().unwrap_or_default();
 
     let win = target_fps.fps / 10;
-    let win = win.min(5);
+    let win = win.max(5);
 
-    let mut alma = ALMA::new(Echo::new(), win.try_into().unwrap());
+    let mut alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
 
     loop {
-        let target_fps_up = connection.get_input().unwrap_or_default();
+        let message = rx.recv().unwrap();
 
+        let target_fps_up = connection.get_input().unwrap_or_default();
         if target_fps != target_fps_up {
+            target_fps = target_fps_up;
             let win = target_fps.fps / 10;
-            let win = win.min(5);
-            alma = ALMA::new(Echo::new(), win.try_into().unwrap());
+            let win = win.max(5);
+            alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
             continue;
         }
 
-        let message = rx.recv().unwrap();
         let now = Instant::now();
 
         let soft_fps = match message {
@@ -65,21 +66,21 @@ pub fn jank(rx: &Receiver<Message>) {
         };
 
         alma.update(soft_fps.frametime.as_secs_f64());
-        let cur_frametime_ns = alma.last();
-        let target_frametime_ns = target_fps.frametime.as_secs_f64();
+        let cur_frametime = alma.last();
+        let target_frametime = target_fps.frametime.as_secs_f64();
 
-        debug!("cur frametime: {cur_frametime_ns}");
-        debug!("target fps: {target_frametime_ns}");
+        debug!("cur frametime: {cur_frametime}");
+        debug!("target fps: {target_frametime}");
         debug!("vsync_fps: {vsync_fps:?}");
 
-        let diff_ns = cur_frametime_ns - target_frametime_ns;
+        let diff = cur_frametime - target_frametime;
 
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation)]
-        if diff_ns < 0.0 {
+        if diff < 0.0 {
             connection.send_jank(0);
         } else {
-            let level = diff_ns / Duration::from_nanos(100_000).as_secs_f64().floor();
+            let level = diff / Duration::from_nanos(100_000).as_secs_f64().floor();
             connection.send_jank(level as u32);
         }
     }
