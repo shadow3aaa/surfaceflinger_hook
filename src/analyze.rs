@@ -37,7 +37,7 @@ pub fn jank(rx: &Receiver<()>) {
 
         let (target_fps_up, fix_time) = connection.get_input().unwrap_or_default();
 
-        let fix_time = fix_time.max(target_fps.frametime);
+        let fix_time = fix_time.min(target_fps.frametime);
 
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
