@@ -11,12 +11,18 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{sync::mpsc::Receiver, time::Instant};
+use std::{
+    sync::mpsc::Receiver,
+    time::{Duration, Instant},
+};
 
 use log::debug;
 use sliding_features::{Echo, View, ALMA};
 
 use crate::{connect::Connection, fps::Fps};
+
+const PREFIX_DUR: Duration = Duration::from_nanos(250_000);
+const ALMA_WIN: usize = 5;
 
 pub fn jank(rx: &Receiver<()>) {
     debug!("Connecting to root process");
@@ -28,9 +34,7 @@ pub fn jank(rx: &Receiver<()>) {
     let mut soft_stamp = Instant::now();
     let (mut target_fps, _) = connection.get_input().unwrap_or_default();
 
-    let win = target_fps.fps / 6;
-    let win = win.max(5);
-    let mut alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
+    let mut alma = ALMA::new(Echo::new(), ALMA_WIN);
 
     loop {
         rx.recv().unwrap();
@@ -41,11 +45,6 @@ pub fn jank(rx: &Receiver<()>) {
 
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
-
-            let win = target_fps.fps / 6;
-            let win = win.max(5);
-            alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
-
             continue;
         }
 
@@ -61,6 +60,7 @@ pub fn jank(rx: &Receiver<()>) {
         debug!("target fps: {target_frametime}");
 
         let diff = cur_frametime - target_frametime;
+        let diff = diff + PREFIX_DUR.as_secs_f64();
 
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation)]
