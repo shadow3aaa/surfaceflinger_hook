@@ -26,16 +26,15 @@ pub fn jank(rx: &Receiver<Message>) {
     let mut connection = Connection::init_and_wait().unwrap(); // 等待root程序链接
     debug!("Connected to root process");
 
-    let mut vsync_stamp = Instant::now();
+    // let mut vsync_stamp = Instant::now();
     let mut soft_stamp = Instant::now();
 
-    let mut vsync_fps = Fps::default();
+    // let mut vsync_fps = Fps::default();
 
     let mut target_fps = connection.get_input().unwrap_or_default();
 
-    let win = target_fps.fps / 10;
+    let win = target_fps.fps / 6;
     let win = win.max(5);
-
     let mut alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
 
     loop {
@@ -44,9 +43,11 @@ pub fn jank(rx: &Receiver<Message>) {
         let target_fps_up = connection.get_input().unwrap_or_default();
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
-            let win = target_fps.fps / 10;
+
+            let win = target_fps.fps / 6;
             let win = win.max(5);
             alma = ALMA::new(Echo::new(), win.try_into().unwrap_or(5));
+
             continue;
         }
 
@@ -54,8 +55,8 @@ pub fn jank(rx: &Receiver<Message>) {
 
         let soft_fps = match message {
             Message::Vsync => {
-                vsync_fps = Fps::from_frametime(now - vsync_stamp);
-                vsync_stamp = now;
+                /* vsync_fps = Fps::from_frametime(now - vsync_stamp);
+                vsync_stamp = now; */
                 continue;
             }
             Message::Soft => {
@@ -71,7 +72,7 @@ pub fn jank(rx: &Receiver<Message>) {
 
         debug!("cur frametime: {cur_frametime}");
         debug!("target fps: {target_frametime}");
-        debug!("vsync_fps: {vsync_fps:?}");
+        // debug!("vsync_fps: {vsync_fps:?}");
 
         let diff = cur_frametime - target_frametime;
 
@@ -80,8 +81,19 @@ pub fn jank(rx: &Receiver<Message>) {
         if diff < 0.0 {
             connection.send_jank(0);
         } else {
-            let level = diff / Duration::from_nanos(100_000).as_secs_f64().floor();
-            connection.send_jank(level as u32);
+            // let fix_time = Duration::from_nanos(100_000).as_secs_f64();
+
+            let level = if diff <= 0.0 {
+                0 // no jank
+            } else if diff <= target_frametime / 10.0 {
+                1 // simp jank
+            } else if diff <= target_frametime / 2.0 {
+                2 // big jank
+            } else {
+                4 // heavy
+            };
+
+            connection.send_jank(level);
         }
     }
 }
