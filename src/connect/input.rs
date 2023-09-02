@@ -11,7 +11,7 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::fs;
+use std::{fs, time::Duration};
 
 use log::error;
 
@@ -22,7 +22,7 @@ use crate::{
 };
 
 impl Connection {
-    pub fn get_input(&mut self) -> Option<Fps> {
+    pub fn get_input(&mut self) -> Option<(Fps, Duration)> {
         let input_raw = fs::read_to_string(&self.input_path).unwrap();
         if input_raw == self.input_raw {
             return self.input;
@@ -34,7 +34,7 @@ impl Connection {
         self.input
     }
 
-    pub fn parse_input<S: AsRef<str>>(i: S) -> Result<Option<Fps>> {
+    pub fn parse_input<S: AsRef<str>>(i: S) -> Result<Option<(Fps, Duration)>> {
         let input = i.as_ref().trim();
 
         if input.is_empty() {
@@ -45,10 +45,23 @@ impl Connection {
             return Ok(None);
         }
 
+        let mut iter = input.trim().split(':');
+
+        let input = iter.next();
         let fps = input
+            .ok_or(Error::Other("Failed to parse input"))?
             .trim()
             .parse()
             .map_err(|_| Error::Other("Failed to parse input"))?;
-        Ok(Some(Fps::from_fps(fps)))
+
+        let input = iter.next();
+        let fix_time = input
+            .ok_or(Error::Other("Failed to parse input"))?
+            .trim()
+            .parse()
+            .map_err(|_| Error::Other("Failed to parse input"))?;
+        let fix_time = Duration::from_nanos(fix_time);
+
+        Ok(Some((Fps::from_fps(fps), fix_time)))
     }
 }

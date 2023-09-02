@@ -38,18 +38,8 @@ use error::Result;
 use hook::SymbolHooker;
 
 pub(crate) const API_DIR: &str = "/dev/surfaceflinger_hook";
-
-static mut VSYNC_FUNC_PTR: Address = ptr::null_mut();
 static mut SOFT_FUNC_PTR: Address = ptr::null_mut();
-
-static mut VSYNC_SENDER: Option<SyncSender<Message>> = None;
-static mut SOFT_SENDER: Option<SyncSender<Message>> = None;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Message {
-    Vsync,
-    Soft,
-}
+static mut SOFT_SENDER: Option<SyncSender<()>> = None;
 
 #[no_mangle]
 pub extern "C" fn handle_hook() {
@@ -66,12 +56,8 @@ pub extern "C" fn handle_hook() {
 
 unsafe fn hook_main() -> Result<()> {
     let hooker = SymbolHooker::new()?;
+
     info!("Hooker started");
-
-    let address = post_hook_vsync as Address;
-    VSYNC_FUNC_PTR = hooker.find_and_hook(["DispSyncSource", "onVsyncCallback"], address)?;
-
-    info!("Hooked onVsyncCallback func");
 
     let address = post_hook_comp as Address;
     SOFT_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
@@ -79,26 +65,15 @@ unsafe fn hook_main() -> Result<()> {
     info!("Hooked postComposition func");
 
     let (sx, rx) = mpsc::sync_channel(1024);
-    VSYNC_SENDER = Some(sx.clone());
     SOFT_SENDER = Some(sx);
 
     thread::Builder::new()
         .name("HookAnalyze".into())
         .spawn(move || analyze::jank(&rx))?;
 
+    info!("Hook finished, no error happened");
+
     Ok(())
-}
-
-// void onVsyncCallback(nsecs_t vsyncTime, nsecs_t targetWakeupTime, nsecs_t readyTime);
-#[no_mangle]
-unsafe extern "C" fn post_hook_vsync(a: i64, b: i64, c: i64) {
-    let ori_func: extern "C" fn(i64, i64, i64) -> () = mem::transmute(VSYNC_FUNC_PTR);
-    ori_func(a, b, c);
-
-    if let Some(sx) = &VSYNC_SENDER {
-        sx.try_send(Message::Vsync)
-            .unwrap_or_else(|e| error!("{e:?}"));
-    }
 }
 
 // void SurfaceFlinger::postComposition();
@@ -108,7 +83,6 @@ unsafe extern "C" fn post_hook_comp() {
     ori_func();
 
     if let Some(sx) = &SOFT_SENDER {
-        sx.try_send(Message::Soft)
-            .unwrap_or_else(|e| error!("{e:?}"));
+        sx.try_send(()).unwrap_or_else(|e| error!("{e:?}"));
     }
 }
