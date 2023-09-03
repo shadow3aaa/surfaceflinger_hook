@@ -70,8 +70,10 @@ pub fn jank(rx: &Receiver<()>) {
                 1 // simp jank
             } else if diff <= target_frametime / 5.0 + fix_time.as_secs_f64() {
                 2 // big jank
-            } else {
+            } else if diff <= target_frametime / 2.0 + fix_time.as_secs_f64() {
                 4 // heavy jank
+            } else {
+                8 // super jank
             };
 
             connection.send_jank(level);
