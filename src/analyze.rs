@@ -11,18 +11,14 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{
-    sync::mpsc::Receiver,
-    time::{Duration, Instant},
-};
+use std::{sync::mpsc::Receiver, time::Instant};
 
 use log::debug;
-use sliding_features::{Echo, View, ALMA};
+use sliding_features::{Echo, View, SMA};
 
 use crate::{connect::Connection, fps::Fps};
 
-const PREFIX_DUR: Duration = Duration::from_nanos(250_000);
-const ALMA_WIN: usize = 5;
+const SMOOTH_WIN: usize = 5;
 
 pub fn jank(rx: &Receiver<()>) {
     debug!("Connecting to root process");
@@ -34,7 +30,7 @@ pub fn jank(rx: &Receiver<()>) {
     let mut soft_stamp = Instant::now();
     let (mut target_fps, _) = connection.get_input().unwrap_or_default();
 
-    let mut alma = ALMA::new(Echo::new(), ALMA_WIN);
+    let mut sma = SMA::new(Echo::new(), SMOOTH_WIN);
 
     loop {
         rx.recv().unwrap();
@@ -45,6 +41,7 @@ pub fn jank(rx: &Receiver<()>) {
 
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
+            sma = SMA::new(Echo::new(), SMOOTH_WIN);
             continue;
         }
 
@@ -52,15 +49,15 @@ pub fn jank(rx: &Receiver<()>) {
         let soft_fps = Fps::from_frametime(now - soft_stamp);
         soft_stamp = now;
 
-        alma.update(soft_fps.frametime.as_secs_f64());
-        let cur_frametime = alma.last();
+        sma.update(soft_fps.frametime.as_secs_f64());
+        let cur_frametime = sma.last();
         let target_frametime = target_fps.frametime.as_secs_f64();
 
         debug!("cur frametime: {cur_frametime}");
         debug!("target fps: {target_frametime}");
 
         let diff = cur_frametime - target_frametime;
-        let diff = diff + PREFIX_DUR.as_secs_f64();
+        // let diff = diff + PREFIX_DUR.as_secs_f64();
 
         #[allow(clippy::cast_sign_loss)]
         #[allow(clippy::cast_possible_truncation)]
