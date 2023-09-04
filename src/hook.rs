@@ -67,7 +67,7 @@ impl SymbolHooker {
             .filter(|symbol| {
                 !symbol.starts_with("_ZThn") && s.iter().all(|s| symbol.contains(s.as_ref()))
             }) // 关键字匹配，排除虚函数
-            .min_by_key(|s| s.len()) // 更短的更匹配目标
+            .min_by_key(|s| s.len()) // 最短的更匹配目标
             .ok_or(Error::Symbol)?;
 
         Ok(resolve_func_addr(None, symbol)?)
