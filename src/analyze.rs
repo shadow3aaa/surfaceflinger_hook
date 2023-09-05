@@ -14,12 +14,15 @@
 use std::{sync::mpsc::Receiver, time::Instant};
 
 use log::debug;
-use sliding_features::{Echo, View, SMA};
+use sliding_features::{Echo, View, ALMA};
 
 use crate::{connect::Connection, fps::Fps};
 
 const SMOOTH_WIN: usize = 5;
 
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_precision_loss)]
 pub fn jank(rx: &Receiver<()>) {
     debug!("Connecting to root process");
 
@@ -30,7 +33,9 @@ pub fn jank(rx: &Receiver<()>) {
     let mut soft_stamp = Instant::now();
     let (mut target_fps, _) = connection.get_input().unwrap_or_default();
 
-    let mut sma = SMA::new(Echo::new(), SMOOTH_WIN);
+    let mut smooth_frametime = ALMA::new(Echo::new(), SMOOTH_WIN);
+
+    smooth_frametime.update(target_fps.frametime.as_nanos() as f64);
 
     loop {
         rx.recv().unwrap();
@@ -41,36 +46,36 @@ pub fn jank(rx: &Receiver<()>) {
 
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
-            sma = SMA::new(Echo::new(), SMOOTH_WIN);
+
+            smooth_frametime = ALMA::new(Echo::new(), SMOOTH_WIN);
+            smooth_frametime.update(target_fps.frametime.as_nanos() as f64);
+
             continue;
         }
 
         let now = Instant::now();
         let soft_fps = Fps::from_frametime(now - soft_stamp);
         soft_stamp = now;
+        smooth_frametime.update(soft_fps.frametime.as_nanos() as f64);
 
-        sma.update(soft_fps.frametime.as_secs_f64());
-        let cur_frametime = sma.last();
-        let target_frametime = target_fps.frametime.as_secs_f64();
+        let cur_frametime = smooth_frametime.last();
+        let target_frametime = target_fps.frametime.as_nanos() as f64;
 
-        debug!("cur frametime: {cur_frametime}");
-        debug!("target fps: {target_frametime}");
+        debug!("cur frametime: {cur_frametime} ns");
+        debug!("target fps: {target_frametime} ns");
 
         let diff = cur_frametime - target_frametime;
-        // let diff = diff + PREFIX_DUR.as_secs_f64();
 
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
         if diff < 0.0 {
             connection.send_jank(0);
         } else {
-            let level = if diff <= 0.0 + fix_time.as_secs_f64() {
+            let level = if diff <= 0.0 + fix_time.as_nanos() as f64 {
                 0 // no jank
-            } else if diff <= target_frametime / 10.0 + fix_time.as_secs_f64() {
+            } else if diff <= target_frametime / 10.0 + fix_time.as_nanos() as f64 {
                 1 // simp jank
-            } else if diff <= target_frametime / 5.0 + fix_time.as_secs_f64() {
+            } else if diff <= target_frametime / 5.0 + fix_time.as_nanos() as f64 {
                 2 // big jank
-            } else if diff <= target_frametime / 2.0 + fix_time.as_secs_f64() {
+            } else if diff <= target_frametime / 2.0 + fix_time.as_nanos() as f64 {
                 4 // heavy jank
             } else {
                 8 // super jank
