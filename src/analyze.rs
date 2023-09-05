@@ -81,7 +81,7 @@ pub fn jank(rx: &Receiver<()>) {
             0 // no jank
         } else if diff <= min_jank_scale.mul_add(2.0, fix_time) {
             1 // simp jank
-        } else if diff <= min_jank_scale * 3.0 / 5.0 + fix_time {
+        } else if diff <= min_jank_scale.mul_add(3.0, fix_time) {
             3 // big jank
         } else if diff <= min_jank_scale.mul_add(5.0, fix_time) {
             4 // heavy jank
