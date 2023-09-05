@@ -34,21 +34,32 @@ pub fn jank(rx: &Receiver<()>) {
     let (mut target_fps, _) = connection.get_input().unwrap_or_default();
 
     let mut smooth_frametime = ALMA::new(Echo::new(), SMOOTH_WIN);
-
     smooth_frametime.update(target_fps.frametime.as_nanos() as f64);
+
+    let mut min_jank_scale = target_fps
+        .frametime
+        .checked_div(target_fps.fps)
+        .unwrap_or_default()
+        .as_nanos() as f64;
 
     loop {
         rx.recv().unwrap();
 
         let (target_fps_up, fix_time) = connection.get_input().unwrap_or_default();
 
-        let fix_time = fix_time.min(target_fps.frametime);
+        let fix_time = fix_time.min(target_fps.frametime).as_nanos() as f64;
 
         if target_fps != target_fps_up {
             target_fps = target_fps_up;
 
             smooth_frametime = ALMA::new(Echo::new(), SMOOTH_WIN);
             smooth_frametime.update(target_fps.frametime.as_nanos() as f64);
+
+            min_jank_scale = target_fps
+                .frametime
+                .checked_div(target_fps.fps)
+                .unwrap_or_default()
+                .as_nanos() as f64;
 
             continue;
         }
@@ -66,22 +77,18 @@ pub fn jank(rx: &Receiver<()>) {
 
         let diff = cur_frametime - target_frametime;
 
-        if diff < 0.0 {
-            connection.send_jank(0);
+        let level = if diff <= min_jank_scale + fix_time {
+            0 // no jank
+        } else if diff <= min_jank_scale.mul_add(2.0, fix_time) {
+            1 // simp jank
+        } else if diff <= min_jank_scale * 3.0 / 5.0 + fix_time {
+            3 // big jank
+        } else if diff <= min_jank_scale.mul_add(5.0, fix_time) {
+            4 // heavy jank
         } else {
-            let level = if diff <= 0.0 + fix_time.as_nanos() as f64 {
-                0 // no jank
-            } else if diff <= target_frametime / 10.0 + fix_time.as_nanos() as f64 {
-                1 // simp jank
-            } else if diff <= target_frametime / 5.0 + fix_time.as_nanos() as f64 {
-                2 // big jank
-            } else if diff <= target_frametime / 2.0 + fix_time.as_nanos() as f64 {
-                4 // heavy jank
-            } else {
-                8 // super jank
-            };
+            8 // super jank
+        };
 
-            connection.send_jank(level);
-        }
+        connection.send_jank(level);
     }
 }
