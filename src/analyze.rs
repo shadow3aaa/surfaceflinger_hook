@@ -77,14 +77,14 @@ pub fn jank(rx: &Receiver<()>) {
 
         let diff = cur_frametime - target_frametime;
 
-        let level = if diff <= min_jank_scale + fix_time {
+        let level = if diff <= 0.0 + fix_time {
             0 // no jank
-        } else if diff <= min_jank_scale.mul_add(2.0, fix_time) {
+        } else if diff <= min_jank_scale + fix_time {
             1 // simp jank
+        } else if diff <= min_jank_scale.mul_add(2.0, fix_time) {
+            2 // big jank
         } else if diff <= min_jank_scale.mul_add(3.0, fix_time) {
-            3 // big jank
-        } else if diff <= min_jank_scale.mul_add(5.0, fix_time) {
-            4 // heavy jank
+            4 // big jank
         } else {
             8 // super jank
         };
