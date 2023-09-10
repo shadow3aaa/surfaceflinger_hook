@@ -38,8 +38,8 @@ use error::Result;
 use hook::SymbolHooker;
 
 pub(crate) const API_DIR: &str = "/dev/surfaceflinger_hook";
-static mut SOFT_FUNC_PTR: Address = ptr::null_mut();
-static mut SOFT_SENDER: Option<SyncSender<()>> = None;
+static mut OLD_FUNC_PTR: Address = ptr::null_mut();
+static mut SENDER: Option<SyncSender<()>> = None;
 
 #[no_mangle]
 pub extern "C" fn handle_hook() {
@@ -55,17 +55,12 @@ pub extern "C" fn handle_hook() {
 }
 
 unsafe fn hook_main() -> Result<()> {
-    let hooker = SymbolHooker::new()?;
-
     info!("Hooker started");
 
-    let address = post_hook_comp as Address;
-    SOFT_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
-
-    info!("Hooked postComposition func");
+    hook_libsurfaceflinger()?;
 
     let (sx, rx) = mpsc::sync_channel(1024);
-    SOFT_SENDER = Some(sx);
+    SENDER = Some(sx);
 
     thread::Builder::new()
         .name("HookAnalyze".into())
@@ -76,13 +71,24 @@ unsafe fn hook_main() -> Result<()> {
     Ok(())
 }
 
+unsafe fn hook_libsurfaceflinger() -> Result<()> {
+    let hooker = SymbolHooker::new("/system/lib64/libsurfaceflinger.so")?;
+
+    let address = post_comp_hooked as Address;
+    OLD_FUNC_PTR = hooker.find_and_hook(["SurfaceFlinger", "postComposition"], address)?;
+
+    info!("Hooked postComposition func");
+
+    Ok(())
+}
+
 // void SurfaceFlinger::postComposition();
 #[no_mangle]
-unsafe extern "C" fn post_hook_comp() {
-    let ori_func: extern "C" fn() -> () = mem::transmute(SOFT_FUNC_PTR);
+unsafe extern "C" fn post_comp_hooked() {
+    let ori_func: extern "C" fn() -> () = mem::transmute(OLD_FUNC_PTR);
     ori_func();
 
-    if let Some(sx) = &SOFT_SENDER {
+    if let Some(sx) = &SENDER {
         sx.try_send(()).unwrap_or_else(|e| error!("{e:?}"));
     }
 }

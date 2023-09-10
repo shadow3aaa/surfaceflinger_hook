@@ -11,22 +11,21 @@
 *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *  See the License for the specific language governing permissions and
 *  limitations under the License. */
-use std::{convert::AsRef, fs, ptr};
+use std::{fs, path::Path, ptr};
 
 use dobby_api::{hook, resolve_func_addr, undo_hook, Address};
 use goblin::Object;
 
 use crate::error::{Error, Result};
 
-const LIB_PATH: &str = "/system/lib64/libsurfaceflinger.so";
-
 pub struct SymbolHooker {
     symbols: Vec<String>,
 }
 
 impl SymbolHooker {
-    pub fn new() -> Result<Self> {
-        let buffer = fs::read(LIB_PATH)?;
+    pub fn new<P: AsRef<Path>>(p: P) -> Result<Self> {
+        let p = p.as_ref();
+        let buffer = fs::read(p)?;
 
         let Object::Elf(lib) = Object::parse(&buffer)? else {
             return Err(Error::Other("Not an elf lib"));
